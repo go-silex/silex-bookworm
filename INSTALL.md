@@ -158,6 +158,13 @@ Le dépôt fournit un mécanisme prêt à l'emploi : [`docs/backup.yml`](docs/ba
 
 **Le job écrit un horodatage à chaque passage**, donc produit toujours un commit. GitHub désactive les tâches planifiées après 60 jours sans commit, et la sauvegarde s'arrêterait sans prévenir.
 
+### À dire avant de partir
+
+Deux phrases, mais elles décident si la sauvegarde servira vraiment un jour :
+
+1. **« Si tu changes ton mot de passe, reviens mettre à jour le secret ici. »** C'est la panne la plus probable, et la plus silencieuse. Fais-lui coller cette consigne en haut du README de son dépôt de sauvegarde — c'est le seul endroit qu'elle rouvrira.
+2. **« Le fichier `DERNIERE-SAUVEGARDE.md` te dit quand ça a marché pour la dernière fois. »** S'il date de plus d'un mois, quelque chose est cassé. C'est le seul contrôle qu'elle ait à faire, et il prend cinq secondes.
+
 ### Restaurer
 
 ```bash
@@ -179,11 +186,13 @@ Vercel → le projet → **Settings** → **Environment Variables** → modifier
 
 Il faudra ensuite le ressaisir sur chaque appareil.
 
+> **⚠️ Si la sauvegarde automatique est en place** (étape 6), il faut aussi mettre à jour le secret `LIBRARY_PASSWORD` dans le dépôt de sauvegarde. Sinon le job échoue en `401` tous les quinze jours, **en silence**, et on ne s'en aperçoit que le jour où on a besoin d'une sauvegarde.
+
 ---
 
 ## Ce que la personne doit savoir avant que tu partes
 
-- **Son mot de passe**, noté quelque part. Il n'y a pas de récupération.
+- **Son mot de passe**, noté quelque part. Il n'y a pas de récupération. Et s'il change un jour, il faudra le répercuter sur le dépôt de sauvegarde (étape 6).
 - **Son adresse** en `.vercel.app`, enregistrée dans les favoris et installée sur son téléphone.
 - **Où sont ses livres** : dans son store Blob, sur son compte Vercel. Pas chez nous, pas chez quelqu'un d'autre. Personne d'autre n'y accède.
 - **Que c'est à elle.** Le code est public, ses données ne le sont pas.
