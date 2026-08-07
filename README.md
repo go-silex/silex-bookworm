@@ -54,7 +54,7 @@ L'app est du HTML et du JavaScript sans étape de build : GitHub Pages ou Netlif
 - **Favoris** — ceux qui comptent.
 - **Historique** — une page par année. C'est là que l'app devient intéressante avec le temps.
 
-**Ajouter un livre.** Tu cherches par titre, ou tu photographies la couverture. L'app lit le code-barres s'il y en a un, sinon elle déchiffre la couverture. Les couvertures arrivent toutes seules, depuis Open Library et Google Books.
+**Ajouter un livre.** Tu cherches par titre, ou tu photographies la couverture. L'app lit le code-barres s'il y en a un, sinon elle déchiffre la couverture (voir plus bas). Les couvertures arrivent toutes seules, depuis Open Library et Google Books.
 
 **Les relectures comptent.** Un livre lu trois fois apparaît trois fois dans l'historique, aux trois bonnes dates. C'était le point de départ du projet.
 
@@ -66,7 +66,7 @@ L'app est du HTML et du JavaScript sans étape de build : GitHub Pages ou Netlif
 
 **Vider la bibliothèque de démonstration.** L'app arrive avec six livres d'exemple pour que tu voies à quoi ça ressemble. Menu **⋯** en haut à droite → **Vider la bibliothèque**.
 
-**Le scan de couverture** (facultatif) demande une clé Google Gemini, gratuite, à créer sur [aistudio.google.com](https://aistudio.google.com/apikey). L'app te la demandera au premier scan. Elle reste dans ton navigateur et n'est envoyée qu'à Google. Sans elle, la recherche par titre fonctionne très bien.
+**Le scan de couverture** (facultatif) demande une clé Google Gemini, gratuite, à créer sur [aistudio.google.com](https://aistudio.google.com/apikey). Tu l'ajoutes **une seule fois** dans les réglages Vercel (`GEMINI_API_KEY`) et le scan marche ensuite sur tous tes appareils — rien à coller sur ton téléphone. Sans elle, la recherche par titre fonctionne très bien.
 
 **Ton mot de passe.** Il n'y a pas de « mot de passe oublié » : personne ne peut le retrouver à ta place, note-le quelque part. Tu peux le changer quand tu veux sans rien perdre — Vercel → ton projet → Settings → Environment Variables → `LIBRARY_PASSWORD`, puis redéployer.
 

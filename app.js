@@ -1,7 +1,6 @@
 /* ── Bibliothèque — suivi de lectures papier ────────────────── */
 
 const KEY = 'bibliotheque.v2';
-const KEY_API = 'bibliotheque.gemini'; // clé API Gemini (l'ancienne clé Anthropic est ignorée)
 const KEY_PWD = 'bibliotheque.pwd';
 
 const GENRES = [
@@ -884,38 +883,22 @@ async function googleBooks(q, n = 1) {
 
 /* Voie vision : Gemini lit la couverture et en extrait les métadonnées.
    Clé gratuite sur aistudio.google.com/apikey, avec quota assignable. */
-async function readCoverWithGemini(b64, apiKey) {
-  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(apiKey), {
+/* La clé Gemini vit sur le serveur, jamais ici : le scan marche donc
+   d'emblée sur tous les appareils, sans rien à coller nulle part. */
+async function readCover(b64) {
+  const res = await fetch('api/vision', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{
-        parts: [
-          { inline_data: { mime_type: 'image/jpeg', data: b64 } },
-          { text: "Cette photo montre la couverture d'un livre papier. Donne le titre exact et l'auteur tels qu'imprimés, puis classe le livre dans l'un des genres proposés. Si aucun livre n'est identifiable, mets found à false et laisse les autres champs vides." },
-        ],
-      }],
-      generationConfig: {
-        response_mime_type: 'application/json',
-        response_schema: {
-          type: 'OBJECT',
-          properties: {
-            found: { type: 'BOOLEAN' },
-            title: { type: 'STRING' },
-            author: { type: 'STRING' },
-            genre: { type: 'STRING', enum: GENRES.map(g => g.id) },
-          },
-          required: ['found', 'title', 'author', 'genre'],
-        },
-      },
-    }),
+    headers: { authorization: 'Bearer ' + pwd, 'content-type': 'application/json' },
+    body: JSON.stringify({ image: b64, genres: GENRES.map(g => g.id) }),
   });
 
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error?.message || `Erreur ${res.status}`);
-  const data = await res.json();
-  const text = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
-  if (!text) throw new Error('Aucun livre reconnu sur cette photo.');
-  return JSON.parse(text);
+  if (res.status === 501 || res.status === 404) {
+    const e = new Error("La reconnaissance de couverture n'est pas activée sur cette installation.");
+    e.notConfigured = true;
+    throw e;
+  }
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Erreur ${res.status}`);
+  return res.json();
 }
 
 async function scanCover(file) {
@@ -938,13 +921,10 @@ async function scanCover(file) {
     if (found) return stepGenre(found);
   }
 
-  // 2. Vision.
-  const apiKey = localStorage.getItem(KEY_API);
-  if (!apiKey) return stepKey(preview);
-
+  // 2. Vision, via le serveur.
   showStatus('Identification du livre…');
   try {
-    const r = await readCoverWithGemini(await shrink(file), apiKey);
+    const r = await readCover(await shrink(file));
     if (!r.found || !r.title) throw new Error("Aucun livre reconnu sur cette photo.");
     const meta = await findMeta(r.title, r.author);
     stepGenre({ title: r.title, author: r.author || 'Auteur inconnu', ...meta }, r.genre);
@@ -954,38 +934,14 @@ async function scanCover(file) {
       <div class="shot"><img src="${preview}" alt=""></div>
       <p class="status">${esc(err.message)}</p>
       <div class="actions">
-        <button class="btn btn-primary press" id="retry">Réessayer</button>
-        <button class="btn btn-glass press" data-glass id="manual">Saisir à la main</button>
+        ${err.notConfigured ? '' : '<button class="btn btn-primary press" id="retry">Réessayer</button>'}
+        <button class="btn ${err.notConfigured ? 'btn-primary' : 'btn-glass'} press" ${err.notConfigured ? '' : 'data-glass'} id="manual">Saisir à la main</button>
       </div>`;
     requestAnimationFrame(() => applyGlass(sheet));
-    body.querySelector('#retry').onclick = () => sheet.querySelector('#shot')?.click() || openSheet();
+    const retry = body.querySelector('#retry');
+    if (retry) retry.onclick = () => sheet.querySelector('#shot')?.click() || openSheet();
     body.querySelector('#manual').onclick = () => stepManual();
   }
-}
-
-function stepKey(preview) {
-  const body = sheet.querySelector('.ov-body');
-  body.innerHTML = `
-    <h1 class="sheet-title">Clé d'API</h1>
-    ${preview ? `<div class="shot"><img src="${preview}" alt=""></div>` : ''}
-    <p class="hint" style="text-align:left;padding-top:0">
-      La reconnaissance de couverture utilise Gemini (gratuit). Créez une clé sur
-      aistudio.google.com/apikey et collez-la ici&nbsp;: elle reste stockée sur cet
-      appareil et n'est envoyée qu'à l'API Google.
-    </p>
-    <input class="field" id="k" type="password" placeholder="AIza…" autocomplete="off">
-    <div class="actions">
-      <button class="btn btn-primary press" id="save-key">Enregistrer</button>
-      <button class="btn btn-glass press" data-glass id="manual">Saisir le livre à la main</button>
-    </div>`;
-  requestAnimationFrame(() => applyGlass(sheet));
-  body.querySelector('#save-key').onclick = () => {
-    const v = body.querySelector('#k').value.trim();
-    if (!v) return;
-    localStorage.setItem(KEY_API, v);
-    openSheet();
-  };
-  body.querySelector('#manual').onclick = () => stepManual();
 }
 
 function stepManual() {

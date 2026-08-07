@@ -87,16 +87,35 @@ Puis montre comment installer l'app sur le téléphone :
 
 ## Étape 5 — Le scan de couverture (facultatif)
 
-**À ne proposer qu'après une installation qui fonctionne.** Ce n'est pas nécessaire : la recherche par titre couvre l'essentiel des usages, et ne transforme pas ça en obstacle.
+**À ne proposer qu'après une installation qui fonctionne.** Ce n'est pas nécessaire : la recherche par titre couvre l'essentiel des usages. N'en fais pas un obstacle.
+
+Ce que ça apporte : photographier une couverture au lieu de taper un titre. Précieux quand on range une pile de livres, ou pour les titres qu'on ne sait pas orthographier.
 
 Deux mécanismes, dans cet ordre :
 
-1. **Le code-barres** — gratuit, instantané, aucune configuration. Ne fonctionne que sur Chrome et Android. Safari et iPhone ne savent pas le faire.
-2. **La lecture de la couverture par IA** — fonctionne partout, y compris sur les vieux livres sans code-barres. Demande une clé Google Gemini.
+1. **Le code-barres** — gratuit, instantané, aucune configuration. Ne fonctionne que sur Chrome et Android : Safari et iPhone ne savent pas lire les codes-barres.
+2. **La lecture de la couverture par IA** — fonctionne partout, y compris sur les vieux livres sans code-barres. C'est ce qui suit.
 
-Pour la clé : [aistudio.google.com/apikey](https://aistudio.google.com/apikey) → *Create API key*. Gratuit, un compte Google suffit, pas de carte bancaire. L'app la réclame d'elle-même au premier scan.
+### Activer la lecture par IA
 
-Elle est stockée dans le navigateur de la personne et n'est envoyée qu'à Google — jamais au serveur de l'app. Une clé à saisir par appareil.
+**Une seule fois, à l'installation.** La clé vit sur le serveur : rien à coller sur les téléphones, et elle marche ensuite sur tous les appareils.
+
+1. Créer une clé sur [aistudio.google.com/apikey](https://aistudio.google.com/apikey) → *Create API key*. Gratuit, un compte Google suffit, pas de carte bancaire.
+2. Vercel → le projet → **Settings** → **Environment Variables** → ajouter `GEMINI_API_KEY`, coller la clé, cocher les trois environnements.
+3. **Redéployer** : Deployments → le dernier → **⋯** → **Redeploy**.
+
+Vérifier ensuite : bouton **+** → photographier un livre → le titre doit être reconnu.
+
+### ⚠️ Si ça coince
+
+| Ce que dit l'app | Cause | Remède |
+|---|---|---|
+| « La reconnaissance de couverture n'est pas activée sur cette installation. » | `GEMINI_API_KEY` absente, ou ajoutée sans redéployer | Ajouter la variable **puis redéployer** |
+| « Aucun livre reconnu sur cette photo. » | photo floue, de biais, ou trop sombre | Reprendre la photo bien à plat |
+| Un message contenant `API key not valid` | clé mal copiée | La recréer et la recoller |
+| Un message parlant de modèle introuvable | le modèle par défaut a été retiré par Google | Ajouter une variable `GEMINI_MODEL` avec un modèle disponible, redéployer |
+
+La clé n'est jamais envoyée au navigateur : le téléphone envoie la photo à `/api/vision`, et c'est le serveur qui parle à Google.
 
 ---
 

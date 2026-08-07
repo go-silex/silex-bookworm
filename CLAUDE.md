@@ -19,7 +19,8 @@ Pour lancer : `npx serve` puis ouvrir `localhost:3000`. **Jamais en `file://`** 
 | `app.js` | toute l'application, ~1180 lignes, un seul scope global |
 | `style.css` | tout le style |
 | `glass.js` | `liquidGlass(el, opts)` — filtre SVG de réfraction. Chromium seulement, dégrade en flou simple ailleurs |
-| `api/library.js` | la sync, 55 lignes, la seule partie serveur |
+| `api/library.js` | la sync, la seule partie serveur avec la suivante |
+| `api/vision.js` | la reconnaissance de couverture — la clé Gemini vit ici, jamais dans le navigateur |
 | `sw.js` | ne met en cache que les images de couverture, rien d'autre |
 
 Les sections de `app.js`, dans l'ordre : constantes et `SEED` → état et `load()` → sync serveur → état dérivé → utilitaires → couvertures → verre liquide → cœur du rendu → les 4 vues → détail d'un livre → ajout → reconnaissance de couverture → étapes du flux d'ajout → événements globaux → séquence de démarrage.
@@ -41,7 +42,8 @@ Les sections de `app.js`, dans l'ordre : constantes et `SEED` → état et `load
 - **`mergeLibraries()` ne doit jamais perdre de données.** Elle réunit par titre normalisé et par `finishedAt`. Toute modification ici mérite d'être testée à deux appareils.
 - **Les chemins sont relatifs** (`api/library`, `./sw.js`, `./manifest.json`) : l'app tourne ainsi depuis n'importe quel sous-dossier, y compris servie en local. Ne les repasse pas en absolu.
 - **L'écran de mot de passe ne protège que l'API.** Tout ce qui est dans le code source est public. Ne mets jamais de donnée personnelle dans `app.js` — c'est arrivé, ça a fuité.
-- **`api/library.js` répond `501` quand rien n'est configuré**, et le client bascule en local. C'est le contrat qui rend l'app déployable en statique. Ne le transforme pas en erreur.
+- **Les deux API répondent `501` quand elles ne sont pas configurées** — `library` fait basculer le client en local, `vision` fait proposer la saisie manuelle. Ce sont des contrats, pas des pannes : ne les transforme pas en erreurs.
+- **Aucune clé d'API ne doit revenir côté navigateur.** `api/vision.js` masque même les clés qui apparaîtraient dans un message d'erreur de Google.
 - Le rendu se fait par `innerHTML` : **toute donnée utilisateur passe par `esc()`**.
 
 ### L'interface est en français
