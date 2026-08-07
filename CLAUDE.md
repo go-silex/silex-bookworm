@@ -2,7 +2,9 @@
 
 ## Si quelqu'un te demande d'installer cette app
 
-Va lire **[INSTALL.md](INSTALL.md)** et déroule-le. Il est écrit pour toi : arbre de décision d'hébergement, commandes exactes, diagnostic des erreurs, recette d'acceptation. La personne en face ne connaît probablement pas la ligne de commande — exécute, ne dicte pas.
+Va lire **[INSTALL.md](INSTALL.md)** et déroule-le. Il est écrit pour toi : étapes exactes, diagnostic des erreurs, recette d'acceptation. La personne en face ne connaît probablement pas la ligne de commande — exécute, ne dicte pas.
+
+**Le déploiement se fait sur Vercel, et nulle part ailleurs.** Ce n'est pas une préférence : les hébergeurs statiques n'exécutent pas `api/library.js`, l'app bascule alors silencieusement en stockage navigateur, et la personne perdra sa bibliothèque le jour où elle videra son cache. Ne propose pas d'alternative, même si on te demande « plus simple ».
 
 ## Si tu viens modifier le code
 
@@ -37,7 +39,7 @@ Les sections de `app.js`, dans l'ordre : constantes et `SEED` → état et `load
 
 - **`save()` déclenche une écriture réseau** via `pushSoon()`. L'appeler dans une boucle est coûteux — le debounce à échéance (900 ms, plafond 5 s) est là pour ça, ne le contourne pas.
 - **`mergeLibraries()` ne doit jamais perdre de données.** Elle réunit par titre normalisé et par `finishedAt`. Toute modification ici mérite d'être testée à deux appareils.
-- **Les chemins sont relatifs** (`api/library`, `./sw.js`, `./manifest.json`) pour que l'app tourne dans un sous-dossier sur GitHub Pages. Ne les repasse pas en absolu.
+- **Les chemins sont relatifs** (`api/library`, `./sw.js`, `./manifest.json`) : l'app tourne ainsi depuis n'importe quel sous-dossier, y compris servie en local. Ne les repasse pas en absolu.
 - **L'écran de mot de passe ne protège que l'API.** Tout ce qui est dans le code source est public. Ne mets jamais de donnée personnelle dans `app.js` — c'est arrivé, ça a fuité.
 - **`api/library.js` répond `501` quand rien n'est configuré**, et le client bascule en local. C'est le contrat qui rend l'app déployable en statique. Ne le transforme pas en erreur.
 - Le rendu se fait par `innerHTML` : **toute donnée utilisateur passe par `esc()`**.

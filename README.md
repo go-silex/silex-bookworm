@@ -16,24 +16,32 @@ Pas de note sur 5, pas de fil d'actualité, pas de compte à créer. Tu photogra
 
 ## Installer
 
-### La façon la plus simple : un clic
+Dix minutes, deux comptes gratuits (GitHub et Vercel), aucune carte bancaire.
+
+### En un clic
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fgo-silex%2Fsilex-bookworm&project-name=ma-bibliotheque&repository-name=ma-bibliotheque&env=LIBRARY_PASSWORD&envDescription=Choisis%20un%20mot%20de%20passe%20—%20c%27est%20lui%20qui%20protège%20ta%20bibliothèque&stores=%5B%7B%22type%22%3A%22blob%22%2C%22access%22%3A%22public%22%7D%5D)
 
-Vercel te demande de te connecter avec GitHub, de choisir un mot de passe, et fabrique tout le reste. Compte gratuit, environ trois minutes. Tu repars avec ta propre adresse et ta bibliothèque synchronisée entre ton téléphone et ton ordinateur.
+Vercel te fait créer ta copie, te demande un mot de passe, et fabrique tout le reste. Tu repars avec ta propre adresse et ta bibliothèque synchronisée entre ton téléphone et ton ordinateur.
 
-### La façon la plus confortable : demander à ton IA
+Prépare ton mot de passe avant de cliquer — il te sera demandé en cours de route, et c'est lui qui protégera ta bibliothèque.
+
+### Ou laisse ton IA le faire
 
 Si tu utilises Claude, ChatGPT ou équivalent, copie-lui ce message :
 
 > Installe cette application pour moi : https://github.com/go-silex/silex-bookworm
 > Suis les instructions du fichier INSTALL.md, et pose-moi les questions au fur et à mesure.
 
-Le dépôt contient un guide écrit spécialement pour être lu par une IA : commandes exactes, erreurs possibles et leur remède. Tu n'as rien à comprendre, juste à répondre.
+Le dépôt contient un guide écrit spécialement pour être lu par une IA : chaque étape, chaque erreur possible et son remède. Tu n'as rien à comprendre, juste à répondre à ce qu'on te demande.
 
-### La façon manuelle
+Le détail pas à pas est dans **[INSTALL.md](INSTALL.md)**.
 
-Tout est dans **[INSTALL.md](INSTALL.md)** — Vercel, Netlify, Cloudflare Pages, GitHub Pages ou simplement sur ton ordinateur.
+### Pourquoi Vercel et rien d'autre
+
+L'app est du HTML et du JavaScript sans étape de build : GitHub Pages ou Netlify l'afficheraient très bien. Mais ils n'exécutent pas de code serveur, et c'est le serveur qui garde tes livres. Sans lui, chaque navigateur a sa propre bibliothèque, vider le cache efface tout, et aucune sauvegarde n'est possible.
+
+Ça marche magnifiquement pendant six mois, puis on perd deux cents livres sans avoir rien fait de mal. D'où le chemin unique.
 
 ---
 
@@ -60,7 +68,7 @@ Tout est dans **[INSTALL.md](INSTALL.md)** — Vercel, Netlify, Cloudflare Pages
 
 **Le scan de couverture** (facultatif) demande une clé Google Gemini, gratuite, à créer sur [aistudio.google.com](https://aistudio.google.com/apikey). L'app te la demandera au premier scan. Elle reste dans ton navigateur et n'est envoyée qu'à Google. Sans elle, la recherche par titre fonctionne très bien.
 
-> **⚠️ Si tu déploies en statique** (GitHub Pages, Netlify, Cloudflare Pages, ou en local), il n'y a pas de serveur : tes livres vivent **uniquement dans le cache de ton navigateur**. Vider les données du site, changer de navigateur ou d'appareil, et tu repars de zéro. Pour une bibliothèque que tu comptes garder, prends le chemin Vercel.
+**Ton mot de passe.** Il n'y a pas de « mot de passe oublié » : personne ne peut le retrouver à ta place, note-le quelque part. Tu peux le changer quand tu veux sans rien perdre — Vercel → ton projet → Settings → Environment Variables → `LIBRARY_PASSWORD`, puis redéployer.
 
 ---
 
@@ -86,7 +94,9 @@ Trois fichiers, aucun framework, aucune étape de build.
 
 A reading tracker for paper books. No ratings, no feed, no account — you deploy your own copy and it's yours.
 
-**Install:** click the Vercel button above (free account, ~3 min), or hand the repo to your AI assistant with *"install this for me, follow INSTALL.md"*. Manual instructions for Vercel, Netlify, Cloudflare Pages, GitHub Pages and local use live in **[INSTALL.md](INSTALL.md)**.
+**Install:** click the Vercel button above (two free accounts, ~10 min, no credit card), or hand the repo to your AI assistant with *"install this for me, follow INSTALL.md"*. Step-by-step instructions live in **[INSTALL.md](INSTALL.md)**.
+
+Vercel is the only supported target, on purpose. The app is plain static files and would render fine on GitHub Pages — but those hosts run no server code, and the server is what keeps your books. Without it every browser holds its own separate library, clearing the cache wipes it, and no backup is possible.
 
 **Note:** the interface is in French. The code is plain vanilla JS with no build step, so translating it means editing string literals in `app.js` — contributions welcome.
 
