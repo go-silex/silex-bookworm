@@ -74,6 +74,8 @@ Sans clé du tout, la recherche par titre fonctionne très bien.
 
 **Ton mot de passe.** Il n'y a pas de « mot de passe oublié » : personne ne peut le retrouver à ta place, note-le quelque part. Tu peux le changer quand tu veux sans rien perdre — Vercel → ton projet → Settings → Environment Variables → `LIBRARY_PASSWORD`, puis redéployer.
 
+**Sauvegarder, quand ta bibliothèque commencera à compter.** [`docs/backup.yml`](docs/backup.yml) est une tâche GitHub prête à l'emploi : elle copie ta bibliothèque dans un dépôt **privé** les 1er et 15 de chaque mois, chez un autre fournisseur que l'app. Git garde chaque version, tu peux remonter à n'importe quelle date. Marche à suivre dans [INSTALL.md](INSTALL.md#étape-6--la-sauvegarde-automatique-recommandé-après-un-an-dusage).
+
 ---
 
 ## La dernière étape — la mettre sur ton écran d'accueil

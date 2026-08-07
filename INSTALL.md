@@ -135,6 +135,42 @@ Quand la clé est sur le serveur, elle n'est jamais envoyée au navigateur : le 
 
 ---
 
+## Étape 6 — La sauvegarde automatique (recommandé après un an d'usage)
+
+Une bibliothèque de lecture prend de la valeur avec le temps : au bout de trois ans, elle contient un historique qu'aucune autre source ne détient. Vercel garde les données de façon fiable, mais un compte fermé, une facture impayée ou une fausse manip effacent tout — et il n'y a pas de corbeille.
+
+**Le principe : la sauvegarde doit vivre chez un autre fournisseur que l'app.** Une copie rangée dans le même compte Vercel disparaît avec lui.
+
+Le dépôt fournit un mécanisme prêt à l'emploi : [`docs/backup.yml`](docs/backup.yml), une tâche GitHub qui interroge l'API les 1er et 15 de chaque mois et enregistre la bibliothèque dans un dépôt. Git conserve chaque version : on peut remonter à n'importe quelle date et comparer.
+
+### Le poser
+
+1. **Créer un dépôt GitHub — privé.** Il contiendra la liste des lectures de la personne : un dépôt public exposerait tout. Vérifie ce point explicitement, c'est la seule erreur grave possible ici.
+2. Y copier `docs/backup.yml` à l'emplacement `.github/workflows/backup.yml`.
+3. Dans ce dépôt, **Settings → Secrets and variables → Actions**, ajouter deux secrets :
+   - `LIBRARY_URL` — l'adresse du site, sans barre oblique finale
+   - `LIBRARY_PASSWORD` — le mot de passe de la bibliothèque
+4. Onglet **Actions** → *Sauvegarde de la bibliothèque* → **Run workflow**, pour vérifier tout de suite. Le job doit afficher le nombre de livres sauvegardés.
+
+### Deux détails qui comptent
+
+**Le job refuse d'écraser une sauvegarde par une réponse vide.** Si l'API tombe ou renvoie une bibliothèque vide, il échoue au lieu de commiter. Sans ce garde-fou, une panne remplacerait des années d'historique par une page d'erreur — c'est la façon dont les sauvegardes automatiques trahissent le plus souvent.
+
+**Le job écrit un horodatage à chaque passage**, donc produit toujours un commit. GitHub désactive les tâches planifiées après 60 jours sans commit, et la sauvegarde s'arrêterait sans prévenir.
+
+### Restaurer
+
+```bash
+curl -X PUT https://SON-ADRESSE.vercel.app/api/library \
+  -H "authorization: Bearer LE-MOT-DE-PASSE" \
+  -H "content-type: application/json" \
+  -d "{\"books\": $(cat library.json)}"
+```
+
+Cette commande **remplace** la bibliothèque en ligne. Récupérer l'état actuel d'abord en cas de doute.
+
+---
+
 ## Changer le mot de passe
 
 Sans danger : la bibliothèque n'y est pas attachée, rien ne se perd.

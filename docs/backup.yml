@@ -1,0 +1,65 @@
+name: Sauvegarde de la bibliothèque
+
+on:
+  schedule:
+    # Les 1er et 15 de chaque mois, à 3h du matin (UTC).
+    - cron: '0 3 1,15 * *'
+  workflow_dispatch: # bouton « Run workflow » pour déclencher à la main
+
+permissions:
+  contents: write
+
+jobs:
+  sauvegarde:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Récupérer la bibliothèque
+        env:
+          URL: ${{ secrets.LIBRARY_URL }}
+          PWD_: ${{ secrets.LIBRARY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o reponse.json -w '%{http_code}' \
+            -H "authorization: Bearer $PWD_" "$URL/api/library")
+
+          if [ "$code" != "200" ]; then
+            echo "::error::L'API a répondu $code. 401 = mot de passe incorrect, 501 = stockage non configuré."
+            exit 1
+          fi
+
+          # Garde-fou : ne JAMAIS écraser une bonne sauvegarde par une réponse
+          # vide ou malformée. Sans ce contrôle, une panne d'API remplacerait
+          # des années d'historique par une page d'erreur.
+          node -e '
+            const fs = require("fs");
+            const j = JSON.parse(fs.readFileSync("reponse.json", "utf8"));
+            const b = j.books;
+            if (!Array.isArray(b) || b.length === 0)
+              throw new Error("réponse sans livre — sauvegarde annulée");
+            const sessions = b.reduce((n, x) => n + (x.sessions || []).length, 0);
+            fs.writeFileSync("library.json", JSON.stringify(b, null, 2));
+            fs.writeFileSync("DERNIERE-SAUVEGARDE.md",
+              `# Dernière sauvegarde\n\n` +
+              `- **${b.length}** livres\n` +
+              `- **${sessions}** sessions de lecture\n` +
+              `- ${new Date().toISOString().replace("T", " ").slice(0, 16)} UTC\n\n` +
+              `L'\''historique complet est dans les commits : chaque version de ` +
+              `library.json y est conservée, avec ses différences.\n`);
+            console.log(`${b.length} livres, ${sessions} sessions`);
+          '
+          rm reponse.json
+
+      - name: Commiter
+        run: |
+          set -euo pipefail
+          git config user.name  "Sauvegarde automatique"
+          git config user.email "actions@github.com"
+          git add library.json DERNIERE-SAUVEGARDE.md
+          # DERNIERE-SAUVEGARDE.md change à chaque passage : il y a donc
+          # toujours un commit. C'est volontaire — GitHub désactive les tâches
+          # planifiées après 60 jours SANS COMMIT, et la sauvegarde s'arrêterait
+          # alors sans prévenir.
+          git commit -m "Sauvegarde du $(date -u '+%d/%m/%Y')"
+          git push
