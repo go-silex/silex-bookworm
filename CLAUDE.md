@@ -1,0 +1,47 @@
+# Bibliothèque — notes pour un agent
+
+## Si quelqu'un te demande d'installer cette app
+
+Va lire **[INSTALL.md](INSTALL.md)** et déroule-le. Il est écrit pour toi : arbre de décision d'hébergement, commandes exactes, diagnostic des erreurs, recette d'acceptation. La personne en face ne connaît probablement pas la ligne de commande — exécute, ne dicte pas.
+
+## Si tu viens modifier le code
+
+**Pas de build, pas de framework, pas de dépendance côté navigateur.** `index.html` charge deux scripts classiques et une feuille de style. C'est délibéré : n'introduis ni bundler, ni TypeScript, ni React. `@vercel/blob` est la seule dépendance npm et ne sert qu'à la fonction serverless.
+
+Pour lancer : `npx serve` puis ouvrir `localhost:3000`. **Jamais en `file://`** — les appels réseau sont bloqués et l'app reste vide.
+
+### La carte
+
+| Fichier | |
+|---|---|
+| `app.js` | toute l'application, ~1180 lignes, un seul scope global |
+| `style.css` | tout le style |
+| `glass.js` | `liquidGlass(el, opts)` — filtre SVG de réfraction. Chromium seulement, dégrade en flou simple ailleurs |
+| `api/library.js` | la sync, 55 lignes, la seule partie serveur |
+| `sw.js` | ne met en cache que les images de couverture, rien d'autre |
+
+Les sections de `app.js`, dans l'ordre : constantes et `SEED` → état et `load()` → sync serveur → état dérivé → utilitaires → couvertures → verre liquide → cœur du rendu → les 4 vues → détail d'un livre → ajout → reconnaissance de couverture → étapes du flux d'ajout → événements globaux → séquence de démarrage.
+
+### Le modèle de données
+
+```js
+{ id, title, author, cover, genre, favorite, shortlist,
+  sessions: [{ id, startedAt, finishedAt }] }
+```
+
+**Tout le reste est dérivé.** Le statut d'un livre (`statusOf`) se déduit de sa dernière session : aucune session → « à lire », une session sans `finishedAt` → « en cours », sinon « lu ». L'historique est la liste de toutes les sessions terminées. C'est ce qui fait que les relectures fonctionnent naturellement — n'ajoute pas de champ `status`, il désynchroniserait tout.
+
+`noCover` est un drapeau transitoire, jamais persisté (voir `stripNoCover`) : un livre sans couverture retente à chaque session, jamais en boucle.
+
+### Les pièges
+
+- **`save()` déclenche une écriture réseau** via `pushSoon()`. L'appeler dans une boucle est coûteux — le debounce à échéance (900 ms, plafond 5 s) est là pour ça, ne le contourne pas.
+- **`mergeLibraries()` ne doit jamais perdre de données.** Elle réunit par titre normalisé et par `finishedAt`. Toute modification ici mérite d'être testée à deux appareils.
+- **Les chemins sont relatifs** (`api/library`, `./sw.js`, `./manifest.json`) pour que l'app tourne dans un sous-dossier sur GitHub Pages. Ne les repasse pas en absolu.
+- **L'écran de mot de passe ne protège que l'API.** Tout ce qui est dans le code source est public. Ne mets jamais de donnée personnelle dans `app.js` — c'est arrivé, ça a fuité.
+- **`api/library.js` répond `501` quand rien n'est configuré**, et le client bascule en local. C'est le contrat qui rend l'app déployable en statique. Ne le transforme pas en erreur.
+- Le rendu se fait par `innerHTML` : **toute donnée utilisateur passe par `esc()`**.
+
+### L'interface est en français
+
+Les libellés sont écrits en dur dans `app.js`. Une traduction impliquerait de les extraire dans un dictionnaire — c'est une contribution bienvenue, mais ce n'est pas fait.

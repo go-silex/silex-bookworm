@@ -1,0 +1,15 @@
+{
+  "name": "silex-bookworm",
+  "version": "1.0.0",
+  "description": "Bibliothèque — suivi de lectures papier. PWA sans build ni framework.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/go-silex/silex-bookworm.git"
+  },
+  "homepage": "https://github.com/go-silex/silex-bookworm",
+  "dependencies": {
+    "@vercel/blob": "^2.6.1"
+  }
+}

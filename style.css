@@ -1,0 +1,544 @@
+/* ── Bibliothèque — liquid glass sur fond blanc ─────────────── */
+
+:root {
+  --bg:       #ffffff;
+  --ink:      #0d0d12;
+  --ink-2:    rgba(60, 60, 67, .6);
+  --ink-3:    rgba(60, 60, 67, .36);
+  --hair:     rgba(0, 0, 0, .07);
+  --accent:   #5b4bff;
+  --ease:     cubic-bezier(.32, .72, 0, 1);
+  --safe-b:   env(safe-area-inset-bottom, 0px);
+  --safe-t:   env(safe-area-inset-top, 0px);
+  --pad:      20px; /* gouttière des pages — s'élargit sur grand écran */
+
+  /* matière : teinte discrète, arête vive, ombre portée douce */
+  --glass-tint: linear-gradient(180deg, rgba(255,255,255,.5), rgba(255,255,255,.22));
+  --glass-edge:
+    inset 0 1px 1px rgba(255,255,255,.9),
+    inset 0 -6px 16px rgba(255,255,255,.28),
+    inset 0 0 0 1px rgba(255,255,255,.45),
+    0 0 0 .5px rgba(0,0,0,.08);
+  --glass-drop: 0 12px 32px rgba(20,16,40,.12), 0 2px 5px rgba(20,16,40,.06);
+  --glass-drop-soft: 0 2px 10px rgba(20,16,40,.05), 0 10px 34px rgba(20,16,40,.07), 0 26px 60px rgba(20,16,40,.05);
+  --glass-edge-soft:
+    inset 0 1px 1px rgba(255,255,255,.8),
+    inset 0 -6px 16px rgba(255,255,255,.24),
+    inset 0 0 0 1px rgba(255,255,255,.34),
+    0 0 0 .5px rgba(0,0,0,.045);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html { -webkit-text-size-adjust: 100%; height: 100%; }
+
+body {
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+input  { font: inherit; color: inherit; background: none; border: 0; outline: 0; }
+
+.press { transition: transform .2s var(--ease), opacity .2s var(--ease); }
+.press:active { transform: scale(.965); opacity: .84; }
+
+/* ── Layout : un pager horizontal, une page par onglet ─────── */
+
+@media (min-width: 680px) { :root { --pad: calc(50vw - 320px); } }
+
+#view {
+  height: 100dvh;
+  display: flex;
+  overflow-x: auto; overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+#view::-webkit-scrollbar { display: none; }
+
+.page {
+  flex: 0 0 100%; min-width: 100%;
+  scroll-snap-align: start; scroll-snap-stop: always;
+  display: flex; flex-direction: column;
+  padding: calc(var(--safe-t) + 22px) var(--pad) calc(var(--safe-b) + 100px);
+  overflow: hidden;
+}
+
+.scroll {
+  flex: 1; min-height: 0;
+  overflow-y: auto; overflow-x: hidden;
+  margin: 0 calc(-1 * var(--pad)); padding: 0 var(--pad) calc(var(--safe-b) + 124px);
+  scrollbar-width: none;
+}
+.scroll::-webkit-scrollbar { display: none; }
+
+.head { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.title { font-size: 36px; font-weight: 700; letter-spacing: -1.3px; line-height: 1; }
+
+/* Le genre courant vit dans le titre : « Bibliothèque /Roman » */
+.title-genre {
+  display: inline-block; margin-left: 10px;
+  font-family: var(--serif); font-style: italic; font-weight: 400;
+  font-size: 21px; letter-spacing: 0; color: var(--ink-2);
+  vertical-align: 3px;
+}
+.title-genre i { color: var(--tone); margin-right: 5px; filter: saturate(1.4) brightness(.82); }
+.title-genre.roll { animation: roll-in .5s var(--spring) backwards; }
+@keyframes roll-in {
+  from { transform: translateY(12px) rotateX(-75deg); opacity: 0; }
+}
+
+.menu-btn {
+  flex: 0 0 auto; width: 38px; height: 38px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--glass-tint);
+  box-shadow: var(--glass-edge), 0 6px 16px rgba(20,16,40,.1);
+  backdrop-filter: blur(16px) saturate(170%);
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
+}
+.menu-btn svg { width: 17px; height: 17px; }
+
+.menu-pop {
+  position: fixed; z-index: 60;
+  top: calc(var(--safe-t) + 68px); right: max(20px, calc(50vw - 300px));
+  min-width: 214px; padding: 6px; border-radius: 24px;
+  background: var(--glass-tint);
+  box-shadow: var(--glass-edge), var(--glass-drop);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  animation: pop .28s var(--ease); transform-origin: top right;
+}
+@keyframes pop { from { opacity: 0; transform: scale(.9) translateY(-6px); } }
+.menu-pop button { display: block; width: 100%; text-align: left; padding: 12px 16px; border-radius: 999px; font-size: 16px; letter-spacing: -.35px; }
+.menu-pop button.danger { color: #ff3b30; }
+.menu-scrim { position: fixed; inset: 0; z-index: 59; }
+
+.section {
+  flex: 0 0 auto;
+  font-size: 12px; font-weight: 600; letter-spacing: 1.1px; text-transform: uppercase;
+  color: var(--ink-3); margin: 22px 0 12px;
+}
+.grow { flex: 1; min-height: 0; }
+.empty { color: var(--ink-2); font-size: 15px; line-height: 1.55; letter-spacing: -.2px; padding: 4px 0; }
+
+/* ── Couvertures ───────────────────────────────────────────── */
+
+.cover {
+  position: relative; display: block; width: 100%;
+  aspect-ratio: 2 / 3; border-radius: 8px; overflow: hidden;
+  background: #eceaf0;
+  container-type: inline-size;
+  box-shadow: 0 1px 2px rgba(20,16,40,.16), 0 10px 26px rgba(20,16,40,.16);
+}
+.cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cover::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  box-shadow: inset 0 0 0 .5px rgba(255,255,255,.3);
+  background: linear-gradient(115deg, rgba(255,255,255,.2) 0%, rgba(255,255,255,0) 34%);
+}
+.cover .fallback {
+  position: absolute; inset: 0; color: #fff;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 11% 10%; font-weight: 600; line-height: 1.18; letter-spacing: -.3px;
+  font-size: clamp(9px, 11cqw, 22px);
+  text-shadow: 0 1px 10px rgba(0,0,0,.28);
+}
+.cover .fallback small { font-weight: 400; opacity: .78; font-size: .7em; margin-top: .5em; }
+
+/* ── Lecture en cours : les couvertures seules, légèrement posées
+   l'une sur l'autre — les détails vivent dans la fiche du livre ── */
+
+.rail-hero {
+  flex: 1; min-height: 0;
+  display: flex; align-items: center;
+  overflow-x: auto; overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  /* marge basse généreuse : l'ombre des couvertures n'est jamais rognée */
+  margin: 0 calc(-1 * var(--pad)); padding: 14px 32px 40px; scrollbar-width: none;
+}
+.rail-hero::-webkit-scrollbar { display: none; }
+
+.hero {
+  flex: 0 0 auto; height: 90%; max-height: 470px; min-height: 150px;
+  scroll-snap-align: center;
+  transform: rotate(var(--r, 0deg));
+}
+.hero + .hero { margin-left: -26px; }
+.hero:first-child { margin-left: auto; }
+.hero:last-child { margin-right: auto; }
+.hero:nth-child(2n)   { --r: 2.2deg; }
+.hero:nth-child(2n+1) { --r: -1.8deg; }
+.hero:only-child { --r: 0deg; }
+
+.hero .cover {
+  height: 100%; width: auto; aspect-ratio: 2 / 3; border-radius: 12px;
+  box-shadow: 0 3px 8px rgba(20,16,40,.16), 0 16px 34px rgba(20,16,40,.2);
+}
+
+/* ── Rails & grilles ───────────────────────────────────────── */
+
+.rail {
+  flex: 0 0 auto;
+  display: flex; align-items: flex-start; gap: 14px; overflow-x: auto;
+  margin: 0 calc(-1 * var(--pad)); padding: 2px var(--pad) 26px; scrollbar-width: none;
+}
+.rail::-webkit-scrollbar { display: none; }
+.rail .item { flex: 0 0 auto; width: 84px; }
+/* deux lignes réservées au titre : tous les auteurs s'alignent */
+.rail .item h4 { min-height: 2.6em; }
+
+.grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 20px 14px; align-content: start; padding-bottom: 8px;
+}
+
+.item { text-align: left; display: block; }
+.item h4 {
+  font-size: 13px; font-weight: 500; letter-spacing: -.15px; margin-top: 9px; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.item p { font-size: 12px; color: var(--ink-3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Bibliothèque : un index éditorial, un chapitre par genre ── */
+
+:root { --spring: cubic-bezier(.34, 1.56, .64, 1); --serif: "Instrument Serif", Georgia, serif; }
+
+/* La jauge colorée marque le genre courant ; les crans inactifs restent
+   présents, dans un gris à peine visible. */
+.ch-ticks { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; margin-top: -8px; padding: 0 0 10px; }
+.ch-count {
+  margin-left: auto; padding-left: 12px;
+  font-size: 12px; font-weight: 500; letter-spacing: -.1px;
+  color: var(--ink-2); white-space: nowrap;
+}
+.ch-ticks button {
+  width: 16px; height: 4px; border-radius: 99px;
+  background: rgba(60, 60, 67, .09);
+  transition: width .4s var(--spring), background .3s var(--ease);
+}
+.ch-ticks button[aria-current="true"] { width: 40px; background: var(--tone); }
+
+.chapters {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; overflow-x: auto; overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  margin: 0 calc(-1 * var(--pad)); scrollbar-width: none;
+}
+.chapters::-webkit-scrollbar { display: none; }
+
+.chapter {
+  position: relative; flex: 0 0 100%; min-width: 100%;
+  scroll-snap-align: center; scroll-snap-stop: always;
+  display: flex; flex-direction: column;
+  padding: 2px var(--pad) 0; overflow: hidden;
+}
+
+/* Halo : la couleur du genre respire derrière la pile. */
+.chapter::before {
+  content: ""; position: absolute; left: 50%; bottom: -16%;
+  translate: -50% 0; width: 130vw; aspect-ratio: 1.15;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--tone), transparent 70%);
+  opacity: .3; filter: blur(24px);
+  pointer-events: none;
+}
+
+/* ── Les livres du genre : une grille qui défile verticalement,
+   sous le nom du genre qui, lui, reste en place ── */
+
+/* La page Bibliothèque laisse les livres filer sous la barre d'onglets :
+   le padding du bas vit dans le scroller, pas dans la page. */
+.page[data-page="bibli"],
+.page[data-page="favoris"],
+.page[data-page="historique"] { padding-bottom: 0; }
+
+.ch-scroll {
+  position: relative; z-index: 1;
+  flex: 1 1 auto; min-height: 0;
+  overflow-y: auto; overscroll-behavior-y: contain;
+  margin: 0 calc(-1 * var(--pad));
+  padding: 8px var(--pad) calc(var(--safe-b) + 124px);
+  scrollbar-width: none;
+}
+.ch-scroll::-webkit-scrollbar { display: none; }
+
+.ch-empty {
+  position: relative; z-index: 1;
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+  color: var(--ink-3);
+}
+.ch-empty i {
+  width: min(30vw, 120px); aspect-ratio: 2/3; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(60, 60, 67, .06);
+  box-shadow: inset 0 0 0 .5px rgba(60, 60, 67, .12);
+}
+.ch-empty i svg { width: 26px; height: 26px; stroke-width: 2; }
+.ch-empty em { font-family: var(--serif); font-style: italic; font-size: 20px; }
+
+/* ── Historique ────────────────────────────────────────────── */
+
+/* Le padding vertical laisse la place aux ombres des puces, que le
+   conteneur défilant rognerait sinon. */
+.years { flex: 0 0 auto; display: flex; gap: 8px; overflow-x: auto; margin: -8px calc(-1 * var(--pad)) 4px; padding: 10px var(--pad) 16px; scrollbar-width: none; }
+.years::-webkit-scrollbar { display: none; }
+.year-chip {
+  flex: 0 0 auto; padding: 8px 15px; border-radius: 100px;
+  font-size: 15px; font-weight: 500; letter-spacing: -.2px; color: var(--ink-2);
+  background: var(--glass-tint);
+  box-shadow: var(--glass-edge), 0 4px 10px rgba(20,16,40,.06);
+  backdrop-filter: blur(14px) saturate(170%);
+  -webkit-backdrop-filter: blur(14px) saturate(170%);
+}
+.year-chip[aria-selected="true"] { background: var(--ink); color: #fff; box-shadow: 0 6px 16px rgba(13,13,18,.24); }
+
+/* Pages d'années : on swipe d'un millésime à l'autre. */
+.ypages {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; overflow-x: auto; overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  margin: 0 calc(-1 * var(--pad)); scrollbar-width: none;
+}
+.ypages::-webkit-scrollbar { display: none; }
+.ypage {
+  flex: 0 0 100%; min-width: 100%;
+  scroll-snap-align: center; scroll-snap-stop: always;
+  display: flex; flex-direction: column;
+  padding: 0 var(--pad);
+}
+.ypage .section { margin-top: 0; }
+
+.rows { display: flex; flex-direction: column; }
+.row { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 11px 0; border-bottom: .5px solid var(--hair); }
+.row:last-child { border-bottom: 0; }
+.row .cover { width: 40px; flex: 0 0 40px; border-radius: 4px; }
+.row .meta { flex: 1; min-width: 0; }
+.row .meta h4 { font-size: 16px; font-weight: 500; letter-spacing: -.35px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .meta p { font-size: 13px; color: var(--ink-3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .aside { flex: 0 0 auto; font-size: 13px; color: var(--ink-3); text-align: right; }
+
+.tag { display: inline-block; margin-left: 8px; padding: 2px 7px; border-radius: 6px; font-size: 10.5px; font-weight: 600; letter-spacing: .3px; text-transform: uppercase; color: var(--ink-2); background: rgba(60,60,67,.09); }
+
+/* ── Tab bar ───────────────────────────────────────────────── */
+
+/* Voile discret : les livres restent visibles sous la barre, juste adoucis. */
+.fade-bottom {
+  position: fixed; left: 0; right: 0; bottom: 0; height: 100px; z-index: 39;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.3) 60%, rgba(255,255,255,.55) 100%);
+}
+
+.tabbar {
+  position: fixed; z-index: 40;
+  left: 50%; translate: -50% 0; bottom: calc(var(--safe-b) + 14px);
+  display: flex; gap: 4px; padding: 7px; border-radius: 999px;
+  background: var(--glass-tint);
+  box-shadow: var(--glass-drop-soft), 0 0 0 .5px rgba(0,0,0,.045);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+/* Rebord : deux lumières opposées, comme un verre roulé sur les bords. */
+.tabbar::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    inset 2px 2px 5px -2px rgba(255,255,255,.75),
+    inset -2px -2px 5px 2px rgba(255,255,255,.6),
+    inset 0 -2px 0 rgba(255,255,255,.35);
+}
+/* La bulle de sélection : un seul élément, déplacé par transform au fil
+   du swipe (voir syncBubble) — les onglets ne portent que la couleur. */
+.tab-bubble {
+  position: absolute; top: 7px; left: 0; width: 58px; height: 50px;
+  border-radius: 999px; background: rgba(255,255,255,.62);
+  box-shadow:
+    inset 2px 2px 5px -2px rgba(255,255,255,.8),
+    inset -2px -1px 5px 0 rgba(255,255,255,.65),
+    inset 0 -2px 0 rgba(255,255,255,.4),
+    0 2px 6px rgba(20,16,40,.08);
+  pointer-events: none; will-change: transform;
+}
+
+.tab {
+  position: relative;
+  width: 58px; height: 50px; border-radius: 999px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-3);
+  transition: color .2s var(--spring), background .2s var(--spring), transform .2s var(--spring);
+}
+@media (hover: hover) and (pointer: fine) {
+  .tab:hover { background: rgba(255,255,255,.34); color: var(--ink-2); }
+}
+.tab:active { transform: scale(.94); }
+.tab[aria-selected="true"] { color: var(--ink); }
+.tab svg { width: 25px; height: 25px; stroke-width: 1.7; }
+
+.tab-sep { align-self: center; width: .5px; height: 20px; margin: 0 4px; background: rgba(0,0,0,.12); }
+.tab-add { color: var(--ink); }
+.tab-add svg { stroke-width: 2.2; }
+
+/* ── Overlays ──────────────────────────────────────────────── */
+
+.overlay {
+  --pad: 20px; /* les overlays gardent leur gouttière propre */
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; flex-direction: column;
+  background: rgba(255, 255, 255, .78);
+  backdrop-filter: blur(30px) saturate(170%);
+  -webkit-backdrop-filter: blur(30px) saturate(170%);
+}
+.overlay[hidden] { display: none; }
+.overlay.enter { animation: rise .46s var(--ease); }
+@keyframes rise { from { transform: translateY(100%); } to { transform: none; } }
+
+.ov-close {
+  position: absolute; z-index: 3;
+  top: calc(var(--safe-t) + 14px); right: 16px;
+  width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; color: var(--ink);
+  background: var(--glass-tint);
+  box-shadow: var(--glass-edge), 0 6px 16px rgba(20,16,40,.12);
+  backdrop-filter: blur(16px) saturate(170%);
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
+}
+.ov-close svg { width: 18px; height: 18px; stroke-width: 2.4; }
+
+.ov-del {
+  position: absolute; z-index: 3;
+  top: calc(var(--safe-t) + 14px); left: 16px;
+  width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,59,48,.9);
+  background: var(--glass-tint);
+  box-shadow: var(--glass-edge-soft), 0 6px 16px rgba(20,16,40,.1);
+  backdrop-filter: blur(16px) saturate(170%);
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
+}
+.ov-del svg { width: 21px; height: 21px; stroke-width: 1.8; }
+
+.ov-body {
+  flex: 0 1 auto; min-height: 0; overflow-y: auto;
+  width: 100%; max-width: 640px; margin: 0 auto;
+  padding: 0 20px calc(var(--safe-b) + 26px);
+  scrollbar-width: none;
+  overscroll-behavior-y: none; /* le tirer-vers-le-bas ferme la vue au lieu de rebondir */
+}
+.ov-body::-webkit-scrollbar { display: none; }
+
+/* ── Fiche livre ───────────────────────────────────────────── */
+
+/* La couverture est ancrée dans une zone de hauteur fixe : les actions
+   et les infos qui changent dessous ne la font jamais bouger. */
+#detail { justify-content: flex-start; }
+#detail .ov-body { flex: 1 1 auto; min-height: 0; }
+.art { flex: 0 0 auto; height: 56vh; min-height: 190px; position: relative; margin-top: calc(var(--safe-t) + 30px); }
+.art .cover {
+  position: absolute; left: 50%; top: 50%; translate: -50% -50%;
+  height: 88%; width: auto; border-radius: 12px;
+  box-shadow: 0 26px 56px rgba(20,16,40,.24), 0 3px 12px rgba(20,16,40,.16);
+}
+
+.actions { display: flex; flex-direction: column; gap: 10px; margin: 4px 0 6px; }
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  padding: 16px 22px; border-radius: 999px;
+  font-size: 17px; font-weight: 600; letter-spacing: -.4px;
+}
+.btn svg { width: 19px; height: 19px; stroke-width: 2; }
+
+/* Fiche livre : rangée d'actions en pastilles rondes, libellé dessous. */
+.actions.icons { flex-direction: row; justify-content: center; gap: 22px; }
+.actions.icons .btn { width: 64px; height: 64px; padding: 0; border-radius: 50%; }
+.actions.icons .btn svg { width: 24px; height: 24px; }
+.act { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.act > span { font-size: 12px; font-weight: 500; letter-spacing: -.1px; color: var(--ink-2); }
+.btn-primary { background: var(--ink); color: #fff; box-shadow: 0 10px 26px rgba(13,13,18,.24); }
+.btn[disabled] { opacity: .38; pointer-events: none; }
+.btn-glass {
+  color: var(--ink);
+  background: var(--glass-tint);
+  box-shadow: var(--glass-edge), 0 8px 20px rgba(20,16,40,.1);
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+}
+.btn[data-act="fav"][aria-pressed="true"] { color: #ff2d55; }
+.btn[data-act="fav"][aria-pressed="true"] svg { fill: currentColor; }
+.btn[data-act="shortlist"][aria-pressed="true"] { color: #007aff; }
+.btn[data-act="shortlist"][aria-pressed="true"] svg { fill: currentColor; }
+
+.facts { margin-top: 18px; }
+.fact { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 12px 0; border-bottom: .5px solid var(--hair); font-size: 15px; letter-spacing: -.2px; }
+.fact:last-child { border-bottom: 0; }
+.fact span { color: var(--ink-2); }
+.fact strong { font-weight: 500; text-align: right; }
+
+/* ── Feuille d'ajout ───────────────────────────────────────── */
+
+.sheet-title { flex: 0 0 auto; font-size: 28px; font-weight: 700; letter-spacing: -1px; padding: calc(var(--safe-t) + 24px) 0 20px; }
+
+.scan-card {
+  display: flex; align-items: center; gap: 15px; width: 100%; text-align: left;
+  padding: 17px; border-radius: 26px; margin-bottom: 12px; color: var(--ink);
+  background: var(--glass-tint);
+  box-shadow: var(--glass-edge), var(--glass-drop);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+.scan-card .ic { width: 44px; height: 44px; flex: 0 0 44px; border-radius: 14px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.75); box-shadow: inset 0 0 0 .5px rgba(0,0,0,.06), 0 2px 6px rgba(20,16,40,.08); }
+.scan-card .ic svg { width: 21px; height: 21px; stroke-width: 1.8; }
+.scan-card h4 { font-size: 16px; font-weight: 600; letter-spacing: -.35px; }
+.scan-card p { font-size: 13px; color: var(--ink-2); margin-top: 3px; line-height: 1.35; }
+
+.field-wrap {
+  display: flex; align-items: center; gap: 9px;
+  padding: 12px 18px; border-radius: 999px; margin-bottom: 16px;
+  background: rgba(120,120,128,.09);
+  box-shadow: inset 0 0 0 .5px rgba(0,0,0,.05);
+}
+.field-wrap svg { width: 17px; height: 17px; stroke-width: 2; color: var(--ink-3); flex: 0 0 auto; }
+.field-wrap input { flex: 1; font-size: 17px; letter-spacing: -.4px; }
+.field-wrap input::placeholder { color: var(--ink-3); }
+
+.field { width: 100%; padding: 14px 18px; border-radius: 999px; margin-bottom: 10px; font-size: 17px; letter-spacing: -.4px; background: rgba(120,120,128,.09); box-shadow: inset 0 0 0 .5px rgba(0,0,0,.05); }
+
+.hint { font-size: 13.5px; color: var(--ink-3); text-align: center; padding: 20px 0; line-height: 1.6; }
+.link { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+
+.picks { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.pick { position: relative; overflow: hidden; padding: 18px 15px; border-radius: 18px; text-align: left; color: #0b0b0f; font-size: 15px; font-weight: 600; letter-spacing: -.3px; box-shadow: inset 0 1px 1px rgba(255,255,255,.6), 0 6px 18px rgba(20,16,40,.12); }
+.pick::after { content: ""; position: absolute; inset: 0; background: linear-gradient(120deg, rgba(255,255,255,.45), rgba(255,255,255,0) 45%); }
+.pick[aria-selected="true"] { box-shadow: inset 0 1px 1px rgba(255,255,255,.6), 0 0 0 2.5px var(--ink); }
+
+.chosen { display: flex; gap: 16px; align-items: center; margin-bottom: 22px; }
+.chosen .cover { width: 58px; flex: 0 0 58px; }
+.chosen h4 { font-size: 17px; font-weight: 600; letter-spacing: -.4px; line-height: 1.25; }
+.chosen p { font-size: 14px; color: var(--ink-2); margin-top: 4px; }
+
+.shot { width: 120px; margin: 0 auto 20px; }
+.shot img { width: 100%; border-radius: 14px; box-shadow: var(--glass-drop); }
+
+.spinner { width: 22px; height: 22px; margin: 24px auto; border: 2px solid rgba(60,60,67,.14); border-top-color: var(--ink); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.status { text-align: center; font-size: 14px; color: var(--ink-2); letter-spacing: -.2px; }
+
+/* ── Écran de verrouillage ─────────────────────────────────── */
+
+.lock {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg);
+  padding: 20px;
+}
+.lock-card { width: 100%; max-width: 360px; text-align: center; }
+.lock-card .sheet-title { padding: 0 0 4px; }
+.lock-card .hint { padding: 8px 0 20px; }
+.lock-card .field { text-align: center; }
+.lock-card .btn { width: 100%; justify-content: center; margin-top: 4px; }
+.lock-card .status { min-height: 20px; margin-top: 14px; }
+
+@media (min-width: 540px) { .grid { grid-template-columns: repeat(4, 1fr); } }
