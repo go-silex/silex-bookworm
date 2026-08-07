@@ -8,7 +8,18 @@
 
 import { createHash, timingSafeEqual } from 'node:crypto';
 
-const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+/* Google retire ses modèles sans prévenir — `gemini-2.5-flash` a disparu
+   un an après avoir été écrit ici. On essaie donc plusieurs générations,
+   de la plus récente à la plus ancienne, et la première qui répond gagne.
+   Un dépôt que personne ne met à jour continue ainsi de fonctionner.
+   GEMINI_MODEL force un modèle précis et court-circuite la liste. */
+const MODELS = process.env.GEMINI_MODEL
+  ? [process.env.GEMINI_MODEL]
+  : ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'];
+
+/* Le modèle n'existe pas / plus : inutile d'insister, on passe au suivant. */
+const modelGone = (status, msg) =>
+  status === 404 || /no longer available|not found|is not supported|does not exist/i.test(msg);
 const PROMPT = "Cette photo montre la couverture d'un livre papier. Donne le titre exact et l'auteur tels qu'imprimés, puis classe le livre dans l'un des genres proposés. Si aucun livre n'est identifiable, mets found à false et laisse les autres champs vides.";
 
 const sha = s => createHash('sha256').update(s).digest();
@@ -37,36 +48,38 @@ export default async function handler(req, res) {
   if (typeof image !== 'string' || !image) return res.status(400).json({ error: 'bad payload' });
   const enum_ = Array.isArray(genres) && genres.length ? genres : ['roman'];
 
-  const r = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=` +
-      encodeURIComponent(process.env.GEMINI_API_KEY),
-    {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ inline_data: { mime_type: 'image/jpeg', data: image } }, { text: PROMPT }] }],
-        generationConfig: {
-          response_mime_type: 'application/json',
-          response_schema: {
-            type: 'OBJECT',
-            properties: {
-              found: { type: 'BOOLEAN' },
-              title: { type: 'STRING' },
-              author: { type: 'STRING' },
-              genre: { type: 'STRING', enum: enum_ },
-            },
-            required: ['found', 'title', 'author', 'genre'],
-          },
+  const payload = JSON.stringify({
+    contents: [{ parts: [{ inline_data: { mime_type: 'image/jpeg', data: image } }, { text: PROMPT }] }],
+    generationConfig: {
+      response_mime_type: 'application/json',
+      response_schema: {
+        type: 'OBJECT',
+        properties: {
+          found: { type: 'BOOLEAN' },
+          title: { type: 'STRING' },
+          author: { type: 'STRING' },
+          genre: { type: 'STRING', enum: enum_ },
         },
-      }),
+        required: ['found', 'title', 'author', 'genre'],
+      },
     },
-  );
+  });
 
-  if (!r.ok) {
-    const msg = (await r.json().catch(() => ({})))?.error?.message || `Erreur ${r.status}`;
-    // La clé du serveur ne doit jamais transparaître dans un message d'erreur.
-    return res.status(502).json({ error: msg.replace(/AIza[\w-]+/g, '…') });
+  let r, msg = '';
+  for (const model of MODELS) {
+    r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=` +
+        encodeURIComponent(process.env.GEMINI_API_KEY),
+      { method: 'POST', headers: { 'content-type': 'application/json' }, body: payload },
+    );
+    if (r.ok) break;
+    msg = (await r.json().catch(() => ({})))?.error?.message || `Erreur ${r.status}`;
+    if (!modelGone(r.status, msg)) break; // vraie erreur : inutile d'essayer les autres
+    r = null;
   }
+
+  // La clé du serveur ne doit jamais transparaître dans un message d'erreur.
+  if (!r) return res.status(502).json({ error: msg.replace(/AIza[\w-]+/g, '…') });
 
   const data = await r.json();
   const text = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');

@@ -4,7 +4,9 @@ const KEY = 'bibliotheque.v2';
 const KEY_PWD = 'bibliotheque.pwd';
 const KEY_API = 'bibliotheque.gemini'; // clé de secours, propre à cet appareil
 
-const GEMINI_MODEL = 'gemini-2.5-flash';
+/* Google retire ses modèles : on essaie du plus récent au plus ancien
+   (voir api/vision.js, qui fait de même côté serveur). */
+const GEMINI_MODELS = ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-2.5-flash'];
 const VISION_PROMPT = "Cette photo montre la couverture d'un livre papier. Donne le titre exact et l'auteur tels qu'imprimés, puis classe le livre dans l'un des genres proposés. Si aucun livre n'est identifiable, mets found à false et laisse les autres champs vides.";
 
 const GENRES = [
@@ -918,29 +920,35 @@ async function readCover(b64) {
 
 /* Chemin de secours : le navigateur parle directement à Google. */
 async function readCoverWithKey(b64, apiKey) {
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=` + encodeURIComponent(apiKey), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ inline_data: { mime_type: 'image/jpeg', data: b64 } }, { text: VISION_PROMPT }] }],
-      generationConfig: {
-        response_mime_type: 'application/json',
-        response_schema: {
-          type: 'OBJECT',
-          properties: {
-            found: { type: 'BOOLEAN' },
-            title: { type: 'STRING' },
-            author: { type: 'STRING' },
-            genre: { type: 'STRING', enum: GENRES.map(g => g.id) },
-          },
-          required: ['found', 'title', 'author', 'genre'],
+  const payload = JSON.stringify({
+    contents: [{ parts: [{ inline_data: { mime_type: 'image/jpeg', data: b64 } }, { text: VISION_PROMPT }] }],
+    generationConfig: {
+      response_mime_type: 'application/json',
+      response_schema: {
+        type: 'OBJECT',
+        properties: {
+          found: { type: 'BOOLEAN' },
+          title: { type: 'STRING' },
+          author: { type: 'STRING' },
+          genre: { type: 'STRING', enum: GENRES.map(g => g.id) },
         },
+        required: ['found', 'title', 'author', 'genre'],
       },
-    }),
+    },
   });
 
-  if (!res.ok) {
-    const msg = (await res.json().catch(() => ({}))).error?.message || `Erreur ${res.status}`;
+  let res = null, msg = '';
+  for (const model of GEMINI_MODELS) {
+    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=` + encodeURIComponent(apiKey), {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: payload,
+    });
+    if (res.ok) break;
+    msg = (await res.json().catch(() => ({}))).error?.message || `Erreur ${res.status}`;
+    if (!(res.status === 404 || /no longer available|not found|is not supported|does not exist/i.test(msg))) break;
+    res = null;
+  }
+
+  if (!res) {
     const e = new Error(msg);
     e.badKey = /API key not valid|API_KEY_INVALID|PERMISSION_DENIED/i.test(msg);
     throw e;
