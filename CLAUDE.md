@@ -43,7 +43,8 @@ Les sections de `app.js`, dans l'ordre : constantes et `SEED` → état et `load
 - **Les chemins sont relatifs** (`api/library`, `./sw.js`, `./manifest.json`) : l'app tourne ainsi depuis n'importe quel sous-dossier, y compris servie en local. Ne les repasse pas en absolu.
 - **L'écran de mot de passe ne protège que l'API.** Tout ce qui est dans le code source est public. Ne mets jamais de donnée personnelle dans `app.js` — c'est arrivé, ça a fuité.
 - **Les deux API répondent `501` quand elles ne sont pas configurées** — `library` fait basculer le client en local, `vision` fait proposer la saisie manuelle. Ce sont des contrats, pas des pannes : ne les transforme pas en erreurs.
-- **Aucune clé d'API ne doit revenir côté navigateur.** `api/vision.js` masque même les clés qui apparaîtraient dans un message d'erreur de Google.
+- **La clé du serveur ne doit jamais revenir côté navigateur.** `api/vision.js` la masque jusque dans les messages d'erreur remontés par Google.
+- **Le scan a deux chemins**, `readCover()` : le serveur d'abord, puis une clé propre à l'appareil (`KEY_API`) en rattrapage. Le serveur prime toujours quand il répond. Ne supprime pas le rattrapage — c'est ce qui évite le cul-de-sac à qui a sauté l'étape d'installation.
 - Le rendu se fait par `innerHTML` : **toute donnée utilisateur passe par `esc()`**.
 
 ### L'interface est en français

@@ -66,7 +66,11 @@ L'app est du HTML et du JavaScript sans étape de build : GitHub Pages ou Netlif
 
 **Vider la bibliothèque de démonstration.** L'app arrive avec six livres d'exemple pour que tu voies à quoi ça ressemble. Menu **⋯** en haut à droite → **Vider la bibliothèque**.
 
-**Le scan de couverture** (facultatif) demande une clé Google Gemini, gratuite, à créer sur [aistudio.google.com](https://aistudio.google.com/apikey). Tu l'ajoutes **une seule fois** dans les réglages Vercel (`GEMINI_API_KEY`) et le scan marche ensuite sur tous tes appareils — rien à coller sur ton téléphone. Sans elle, la recherche par titre fonctionne très bien.
+**Le scan de couverture** (facultatif) demande une clé Google Gemini, gratuite et sans carte bancaire, à créer sur [aistudio.google.com](https://aistudio.google.com/apikey).
+
+Deux façons de la poser. Dans les réglages Vercel sous le nom `GEMINI_API_KEY` : c'est la bonne, tu le fais une fois et le scan marche sur tous tes appareils. Ou directement dans l'app au premier scan, si tu préfères ne pas y penser tout de suite — l'app t'explique la marche à suivre, mais cette clé-là ne vaudra que pour l'appareil où tu l'as collée.
+
+Sans clé du tout, la recherche par titre fonctionne très bien.
 
 **Ton mot de passe.** Il n'y a pas de « mot de passe oublié » : personne ne peut le retrouver à ta place, note-le quelque part. Tu peux le changer quand tu veux sans rien perdre — Vercel → ton projet → Settings → Environment Variables → `LIBRARY_PASSWORD`, puis redéployer.
 

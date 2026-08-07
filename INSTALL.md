@@ -98,7 +98,9 @@ Deux mécanismes, dans cet ordre :
 
 ### Activer la lecture par IA
 
-**Une seule fois, à l'installation.** La clé vit sur le serveur : rien à coller sur les téléphones, et elle marche ensuite sur tous les appareils.
+**Fais-le maintenant, pendant que tu es là.** La clé vit sur le serveur : rien à coller sur les téléphones, et elle marche ensuite sur tous les appareils. La personne seule face au dashboard Vercel dans trois semaines, elle, ne le fera pas.
+
+Si elle ne veut pas s'en occuper tout de suite, ce n'est pas un cul-de-sac : au premier scan, l'app lui expliquera comment obtenir une clé et la lui fera coller sur place. Cette clé-là ne vaudra que pour l'appareil en question — d'où l'intérêt de la poser sur le serveur maintenant.
 
 1. Créer une clé sur [aistudio.google.com/apikey](https://aistudio.google.com/apikey) → *Create API key*. Gratuit, un compte Google suffit, pas de carte bancaire.
 2. Vercel → le projet → **Settings** → **Environment Variables** → ajouter `GEMINI_API_KEY`, coller la clé, cocher les trois environnements.
@@ -110,12 +112,12 @@ Vérifier ensuite : bouton **+** → photographier un livre → le titre doit ê
 
 | Ce que dit l'app | Cause | Remède |
 |---|---|---|
-| « La reconnaissance de couverture n'est pas activée sur cette installation. » | `GEMINI_API_KEY` absente, ou ajoutée sans redéployer | Ajouter la variable **puis redéployer** |
+| L'écran « Reconnaître les couvertures » réapparaît alors que la variable est posée | `GEMINI_API_KEY` ajoutée sans redéployer | Redéployer |
 | « Aucun livre reconnu sur cette photo. » | photo floue, de biais, ou trop sombre | Reprendre la photo bien à plat |
-| Un message contenant `API key not valid` | clé mal copiée | La recréer et la recoller |
+| « Cette clé a été refusée par Google. » | clé mal copiée ou révoquée | En recréer une |
 | Un message parlant de modèle introuvable | le modèle par défaut a été retiré par Google | Ajouter une variable `GEMINI_MODEL` avec un modèle disponible, redéployer |
 
-La clé n'est jamais envoyée au navigateur : le téléphone envoie la photo à `/api/vision`, et c'est le serveur qui parle à Google.
+Quand la clé est sur le serveur, elle n'est jamais envoyée au navigateur : le téléphone envoie la photo à `/api/vision`, et c'est le serveur qui parle à Google.
 
 ---
 

@@ -2,6 +2,10 @@
 
 const KEY = 'bibliotheque.v2';
 const KEY_PWD = 'bibliotheque.pwd';
+const KEY_API = 'bibliotheque.gemini'; // clé de secours, propre à cet appareil
+
+const GEMINI_MODEL = 'gemini-2.5-flash';
+const VISION_PROMPT = "Cette photo montre la couverture d'un livre papier. Donne le titre exact et l'auteur tels qu'imprimés, puis classe le livre dans l'un des genres proposés. Si aucun livre n'est identifiable, mets found à false et laisse les autres champs vides.";
 
 const GENRES = [
   { id: 'roman',    name: 'Roman',    color: '#C9F24E' },
@@ -882,23 +886,68 @@ async function googleBooks(q, n = 1) {
 }
 
 /* Voie vision : Gemini lit la couverture et en extrait les métadonnées.
-   Clé gratuite sur aistudio.google.com/apikey, avec quota assignable. */
-/* La clé Gemini vit sur le serveur, jamais ici : le scan marche donc
-   d'emblée sur tous les appareils, sans rien à coller nulle part. */
+
+   Deux chemins, dans cet ordre. Le serveur d'abord — la clé y est posée
+   une fois à l'installation et vaut pour tous les appareils. À défaut,
+   une clé collée sur cet appareil-ci : c'est le rattrapage de qui a sauté
+   l'étape, pour qu'il ne bute pas sur une porte fermée.
+
+   Le verdict du serveur ne change pas en cours de session : on ne le
+   redemande donc qu'une fois. */
+let visionOnServer = null; // null = pas encore su
+
 async function readCover(b64) {
-  const res = await fetch('api/vision', {
+  if (visionOnServer !== false) {
+    const res = await fetch('api/vision', {
+      method: 'POST',
+      headers: { authorization: 'Bearer ' + pwd, 'content-type': 'application/json' },
+      body: JSON.stringify({ image: b64, genres: GENRES.map(g => g.id) }),
+    });
+    if (res.status !== 501 && res.status !== 404) {
+      visionOnServer = true;
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Erreur ${res.status}`);
+      return res.json();
+    }
+    visionOnServer = false;
+  }
+
+  const key = localStorage.getItem(KEY_API);
+  if (!key) { const e = new Error('clé absente'); e.needsKey = true; throw e; }
+  return readCoverWithKey(b64, key);
+}
+
+/* Chemin de secours : le navigateur parle directement à Google. */
+async function readCoverWithKey(b64, apiKey) {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=` + encodeURIComponent(apiKey), {
     method: 'POST',
-    headers: { authorization: 'Bearer ' + pwd, 'content-type': 'application/json' },
-    body: JSON.stringify({ image: b64, genres: GENRES.map(g => g.id) }),
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ inline_data: { mime_type: 'image/jpeg', data: b64 } }, { text: VISION_PROMPT }] }],
+      generationConfig: {
+        response_mime_type: 'application/json',
+        response_schema: {
+          type: 'OBJECT',
+          properties: {
+            found: { type: 'BOOLEAN' },
+            title: { type: 'STRING' },
+            author: { type: 'STRING' },
+            genre: { type: 'STRING', enum: GENRES.map(g => g.id) },
+          },
+          required: ['found', 'title', 'author', 'genre'],
+        },
+      },
+    }),
   });
 
-  if (res.status === 501 || res.status === 404) {
-    const e = new Error("La reconnaissance de couverture n'est pas activée sur cette installation.");
-    e.notConfigured = true;
+  if (!res.ok) {
+    const msg = (await res.json().catch(() => ({}))).error?.message || `Erreur ${res.status}`;
+    const e = new Error(msg);
+    e.badKey = /API key not valid|API_KEY_INVALID|PERMISSION_DENIED/i.test(msg);
     throw e;
   }
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Erreur ${res.status}`);
-  return res.json();
+  const data = await res.json();
+  const text = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
+  return text ? JSON.parse(text) : { found: false };
 }
 
 async function scanCover(file) {
@@ -921,7 +970,7 @@ async function scanCover(file) {
     if (found) return stepGenre(found);
   }
 
-  // 2. Vision, via le serveur.
+  // 2. Vision : serveur, ou clé de cet appareil.
   showStatus('Identification du livre…');
   try {
     const r = await readCover(await shrink(file));
@@ -929,19 +978,61 @@ async function scanCover(file) {
     const meta = await findMeta(r.title, r.author);
     stepGenre({ title: r.title, author: r.author || 'Auteur inconnu', ...meta }, r.genre);
   } catch (err) {
+    if (err.needsKey) return stepKey(preview);
+    if (err.badKey) { localStorage.removeItem(KEY_API); return stepKey(preview, 'Cette clé a été refusée par Google. Vérifiez-la ou créez-en une autre.'); }
     body.innerHTML = `
       <h1 class="sheet-title">Analyse</h1>
       <div class="shot"><img src="${preview}" alt=""></div>
       <p class="status">${esc(err.message)}</p>
       <div class="actions">
-        ${err.notConfigured ? '' : '<button class="btn btn-primary press" id="retry">Réessayer</button>'}
-        <button class="btn ${err.notConfigured ? 'btn-primary' : 'btn-glass'} press" ${err.notConfigured ? '' : 'data-glass'} id="manual">Saisir à la main</button>
+        <button class="btn btn-primary press" id="retry">Réessayer</button>
+        <button class="btn btn-glass press" data-glass id="manual">Saisir à la main</button>
       </div>`;
     requestAnimationFrame(() => applyGlass(sheet));
-    const retry = body.querySelector('#retry');
-    if (retry) retry.onclick = () => sheet.querySelector('#shot')?.click() || openSheet();
+    body.querySelector('#retry').onclick = () => sheet.querySelector('#shot')?.click() || openSheet();
     body.querySelector('#manual').onclick = () => stepManual();
   }
+}
+
+/* Rattrapage : la reconnaissance n'est pas configurée côté serveur. On
+   explique ce que ça débloque et ce que ça coûte (rien), plutôt que de
+   réclamer une « clé d'API » à quelqu'un qui ignore ce que c'est. */
+function stepKey(preview, problem) {
+  const body = sheet.querySelector('.ov-body');
+  body.innerHTML = `
+    <h1 class="sheet-title">Reconnaître les couvertures</h1>
+    ${preview ? `<div class="shot"><img src="${preview}" alt=""></div>` : ''}
+    ${problem ? `<p class="status">${esc(problem)}</p>` : ''}
+    <p class="hint" style="text-align:left;padding-top:0">
+      Pour lire un livre sur une photo, l'app a besoin d'une clé Google&nbsp;:
+      c'est gratuit, sans carte bancaire, et ça prend deux minutes.
+    </p>
+    <ol class="hint" style="text-align:left;padding-top:0">
+      <li>Ouvrez <b>aistudio.google.com/apikey</b></li>
+      <li>Connectez-vous avec votre compte Google</li>
+      <li>Cliquez sur <b>Create API key</b></li>
+      <li>Copiez la clé et collez-la ci-dessous</li>
+    </ol>
+    <input class="field" id="k" type="password" placeholder="AIza…" autocomplete="off" enterkeyhint="go">
+    <div class="actions">
+      <button class="btn btn-primary press" id="save-key">Activer</button>
+      <button class="btn btn-glass press" data-glass id="manual">Saisir ce livre à la main</button>
+    </div>
+    <p class="hint" style="text-align:left">
+      Cette clé ne vaut que pour cet appareil&nbsp;: il faudra la recoller sur
+      les autres. Pour l'activer partout d'un coup, ajoutez-la plutôt à votre
+      hébergement sous le nom <b>GEMINI_API_KEY</b> — voir INSTALL.md.
+    </p>`;
+  requestAnimationFrame(() => applyGlass(sheet));
+  const save = () => {
+    const v = body.querySelector('#k').value.trim();
+    if (!v) return;
+    localStorage.setItem(KEY_API, v);
+    openSheet();
+  };
+  body.querySelector('#save-key').onclick = save;
+  body.querySelector('#k').onkeydown = e => { if (e.key === 'Enter') save(); };
+  body.querySelector('#manual').onclick = () => stepManual();
 }
 
 function stepManual() {
