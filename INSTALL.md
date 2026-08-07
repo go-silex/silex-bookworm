@@ -79,9 +79,23 @@ Déroule ces six points dans l'ordre, avec la personne. C'est la recette d'accep
 5. **Recharger la page** : le livre est toujours là.
 6. **Ouvrir la même adresse depuis le téléphone**, saisir le même mot de passe → le livre de l'étape 4 est là. **C'est le test qui compte** : il prouve que les données vivent sur le serveur et pas seulement dans un navigateur.
 
-Puis montre comment installer l'app sur le téléphone :
-**iPhone** — Safari → *Partager* → *Sur l'écran d'accueil*.
-**Android** — Chrome → menu → *Installer l'application*.
+### Puis mets-la sur son écran d'accueil
+
+**Ne saute pas cette étape et ne la laisse pas « pour plus tard ».** Une bibliothèque qu'on doit ouvrir dans un navigateur est une bibliothèque qu'on n'ouvre plus. C'est aussi le moment où la personne comprend qu'elle a une vraie app, sans être passée par l'App Store — dis-le lui, c'est souvent la partie qui impressionne.
+
+**Sur iPhone**, guide-la pas à pas :
+
+1. Ouvrir son adresse **dans Safari** — précise-le, ça ne fonctionne pas depuis Chrome sur iOS.
+2. Bouton **Partager** (le carré avec la flèche vers le haut, en bas de l'écran).
+3. Faire défiler jusqu'à **Ajouter à l'écran d'accueil**.
+4. Si l'option **Ouvrir comme** apparaît : choisir **Application**. C'est ce qui retire la barre d'adresse.
+5. **Ajouter**, en haut à droite.
+
+**Sur Android** — Chrome → menu **⋮** → *Installer l'application*.
+
+**Sur ordinateur** — Chrome et Edge affichent une icône d'installation dans la barre d'adresse.
+
+Fais-lui ensuite ouvrir l'app depuis l'icône, pas depuis le navigateur, et vérifie avec elle qu'il n'y a plus de barre d'adresse. C'est le vrai point final de l'installation.
 
 ---
 

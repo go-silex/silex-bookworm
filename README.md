@@ -58,7 +58,7 @@ L'app est du HTML et du JavaScript sans étape de build : GitHub Pages ou Netlif
 
 **Les relectures comptent.** Un livre lu trois fois apparaît trois fois dans l'historique, aux trois bonnes dates. C'était le point de départ du projet.
 
-**Ça s'installe comme une app.** Sur iPhone : Partager → *Sur l'écran d'accueil*. Ça s'ouvre en plein écran, sans barre de navigateur.
+**Ça s'installe comme une app**, sans passer par l'App Store — [voir la dernière étape](#la-dernière-étape--la-mettre-sur-ton-écran-daccueil).
 
 ---
 
@@ -73,6 +73,34 @@ Deux façons de la poser. Dans les réglages Vercel sous le nom `GEMINI_API_KEY`
 Sans clé du tout, la recherche par titre fonctionne très bien.
 
 **Ton mot de passe.** Il n'y a pas de « mot de passe oublié » : personne ne peut le retrouver à ta place, note-le quelque part. Tu peux le changer quand tu veux sans rien perdre — Vercel → ton projet → Settings → Environment Variables → `LIBRARY_PASSWORD`, puis redéployer.
+
+---
+
+## La dernière étape — la mettre sur ton écran d'accueil
+
+Une bibliothèque qu'on doit ouvrir dans un navigateur, on l'oublie. Fais cette étape maintenant, elle prend trente secondes et c'est elle qui transforme le site en app.
+
+**Il n'y a pas d'App Store ici, et il n'y en a pas besoin.** Ton téléphone sait déjà installer un site comme une application — même icône, même plein écran, même comportement. La différence ne se voit pas à l'usage.
+
+### Sur iPhone
+
+1. Ouvre ton adresse **dans Safari** (ça ne marche pas depuis Chrome sur iOS).
+2. Appuie sur le bouton **Partager** — le carré avec la flèche vers le haut, en bas de l'écran.
+3. Fais défiler et choisis **Ajouter à l'écran d'accueil**.
+4. Si l'option **Ouvrir comme** apparaît, choisis **Application**. C'est ce qui supprime la barre d'adresse et donne le vrai plein écran.
+5. **Ajouter**, en haut à droite.
+
+L'icône est maintenant sur ton écran d'accueil. Tu peux la déplacer, la ranger dans un dossier, la mettre dans ton dock — Safari n'apparaîtra plus jamais.
+
+### Sur Android
+
+Ouvre l'adresse dans Chrome → menu **⋮** → **Installer l'application** (ou *Ajouter à l'écran d'accueil*).
+
+### Sur ordinateur
+
+Chrome et Edge affichent une petite icône d'installation à droite de la barre d'adresse. Facultatif, mais pratique si tu saisis tes livres depuis ton bureau.
+
+> Le mot de passe est demandé une fois par appareil. Une fois saisi, tu n'y repenses plus : ta bibliothèque se synchronise toute seule entre ton téléphone et ton ordinateur.
 
 ---
 
@@ -106,7 +134,9 @@ Vercel is the only supported target, on purpose. The app is plain static files a
 
 **How it works:** four swipeable views (reading, library by genre, favourites, history by year). Books are added by title search or by photographing the cover — barcode first, then a Gemini vision fallback if you supply a free API key. Covers are fetched from Open Library and Google Books. Re-reads are first-class: each reading session is stored separately, so a book read three times shows up three times in your history.
 
-**Data:** stored in `localStorage`, optionally synced to a Vercel Blob store behind a single shared password. Static deployments have no server — your data lives in the browser cache only.
+**Data:** stored in `localStorage` and synced to your own Vercel Blob store behind a single password you choose. Nobody else can read it — the code is public, your library is not.
+
+**Last step — put it on your home screen.** No App Store needed. On iPhone, open your URL **in Safari** → *Share* → *Add to Home Screen* → if asked, pick **Open as: Application** → *Add*. On Android, Chrome → **⋮** → *Install app*. It then behaves exactly like a native app, full screen, its own icon.
 
 ---
 
