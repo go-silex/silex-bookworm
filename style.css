@@ -42,7 +42,7 @@ body {
 }
 
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
-input  { font: inherit; color: inherit; background: none; border: 0; outline: 0; }
+input, textarea { font: inherit; color: inherit; background: none; border: 0; outline: 0; }
 
 .press { transition: transform .2s var(--ease), opacity .2s var(--ease); }
 .press:active { transform: scale(.965); opacity: .84; }
@@ -470,10 +470,14 @@ input  { font: inherit; color: inherit; background: none; border: 0; outline: 0;
 /* ── Fiche livre ───────────────────────────────────────────── */
 
 /* La couverture est ancrée dans une zone de hauteur fixe : les actions
-   et les infos qui changent dessous ne la font jamais bouger. */
+   et les infos qui changent dessous ne la font jamais bouger.
+
+   La marge haute passe sous la rangée de boutons (haut à `--safe-t + 14`,
+   44 px de côté) : sans elle, une couverture haute vient toucher la
+   corbeille et le crayon. */
 #detail { justify-content: flex-start; }
 #detail .ov-body { flex: 1 1 auto; min-height: 0; }
-.art { flex: 0 0 auto; height: 56vh; min-height: 190px; position: relative; margin-top: calc(var(--safe-t) + 30px); }
+.art { flex: 0 0 auto; height: 52vh; min-height: 180px; position: relative; margin-top: calc(var(--safe-t) + 72px); }
 .art .cover {
   position: absolute; left: 50%; top: 50%; translate: -50% -50%;
   height: 88%; width: auto; border-radius: 12px;
@@ -514,6 +518,17 @@ input  { font: inherit; color: inherit; background: none; border: 0; outline: 0;
 .fact span { color: var(--ink-2); }
 .fact strong { font-weight: 500; text-align: right; }
 
+/* Les notes : une seule par livre, posée sous les faits. Vide, le bloc
+   invite quand même — sinon personne ne saurait qu'il existe. */
+.note {
+  display: block; width: 100%; text-align: left;
+  margin-top: 14px; padding: 15px 17px; border-radius: 20px;
+  background: rgba(120, 120, 128, .07);
+  box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .045);
+}
+.note p { font-size: 15.5px; line-height: 1.55; letter-spacing: -.2px; white-space: pre-wrap; }
+.note em { font-style: normal; font-size: 15px; letter-spacing: -.2px; color: var(--ink-3); }
+
 /* ── Feuille d'ajout ───────────────────────────────────────── */
 
 .sheet-title { flex: 0 0 auto; font-size: 28px; font-weight: 700; letter-spacing: -1px; padding: calc(var(--safe-t) + 24px) 0 20px; }
@@ -542,6 +557,9 @@ input  { font: inherit; color: inherit; background: none; border: 0; outline: 0;
 .field-wrap input::placeholder { color: var(--ink-3); }
 
 .field { width: 100%; padding: 14px 18px; border-radius: 999px; margin-bottom: 10px; font-size: 17px; letter-spacing: -.4px; background: rgba(120,120,128,.09); box-shadow: inset 0 0 0 .5px rgba(0,0,0,.05); }
+
+/* Le seul champ multiligne : la pilule ne lui va pas. */
+.field-note { border-radius: 22px; min-height: 118px; line-height: 1.5; resize: none; padding: 15px 18px; }
 
 .hint { font-size: 13.5px; color: var(--ink-3); text-align: center; padding: 20px 0; line-height: 1.6; }
 .link { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }

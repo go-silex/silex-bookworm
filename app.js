@@ -37,7 +37,12 @@ const SEED = [
 /* ── État ──────────────────────────────────────────────────── */
 
 const uid = () => Math.random().toString(36).slice(2, 10);
-const today = () => new Date().toISOString().slice(0, 10);
+/* Date du jour en heure locale, jamais en UTC : `toISOString()` datait de
+   la veille tout ce qui se commençait entre minuit et 2 h du matin. */
+const today = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 /* Vrai tant que l'écran n'affiche que la démo : rien de personnel n'a
    encore été saisi. Une bibliothèque distante remplace alors la démo au
@@ -130,6 +135,18 @@ document.addEventListener('visibilitychange', () => {
   }).catch(() => {});
 });
 
+/* Deux appareils, deux notes sur le même livre : on ne choisit pas à la
+   place de l'auteur. Quand l'une contient déjà l'autre — le cas courant,
+   une note complétée ailleurs — la plus longue suffit ; sinon on garde
+   les deux, séparées. Perdre du texte écrit à la main serait pire que
+   laisser deux paragraphes à recoller. */
+function mergeNotes(a, b) {
+  if (!a) return b || '';
+  if (!b || a.includes(b)) return a;
+  if (b.includes(a)) return b;
+  return a + '\n\n' + b;
+}
+
 /* Union de deux bibliothèques : livres réunis par titre, lectures
    réunies par date de fin — rien n'est perdu, rien n'est doublé. */
 function mergeLibraries(base, extra) {
@@ -140,6 +157,8 @@ function mergeLibraries(base, extra) {
     b.favorite = b.favorite || x.favorite;
     b.shortlist = b.shortlist || x.shortlist;
     b.cover = b.cover || x.cover;
+    const note = mergeNotes(b.note, x.note);
+    if (note) b.note = note;
     for (const s of x.sessions) {
       const dup = s.finishedAt
         ? b.sessions.some(t => t.finishedAt === s.finishedAt)
@@ -755,6 +774,14 @@ function openDetail(id, silent) {
     last && last.startedAt && ['Durée', plural(days(last.startedAt, last.finishedAt), 'jour')],
   ].filter(Boolean);
 
+  /* La note du livre, et non celle d'une lecture : on relit rarement en
+     pensant autre chose au point de vouloir deux textes. */
+  const note = `
+    <h2 class="section">Notes</h2>
+    <button class="note press" data-act="note">
+      ${b.note ? `<p>${esc(b.note)}</p>` : '<em>Ajouter une note</em>'}
+    </button>`;
+
   const history = done.length ? `
     <h2 class="section">${done.length > 1 ? 'Toutes vos lectures' : 'Votre lecture'}</h2>
     <div class="rows">
@@ -779,6 +806,7 @@ function openDetail(id, silent) {
     <div class="ov-body">
       <div class="actions icons">${actions}</div>
       <div class="facts">${facts.map(([k, v]) => `<div class="fact"><span>${k}</span><strong>${esc(v)}</strong></div>`).join('')}</div>
+      ${note}
       ${history}
     </div>`;
 
@@ -797,6 +825,7 @@ function openDetail(id, silent) {
     const act = e.target.closest('[data-act]')?.dataset.act;
     if (!act) return;
     if (act === 'edit') return openEditor(b.id);
+    if (act === 'note') return openEditor(b.id, true);
     if (act === 'start' || act === 'reread') b.sessions.push({ id: uid(), startedAt: today(), finishedAt: null });
     if (act === 'finish') { const s = currentSession(b); if (s) s.finishedAt = today(); }
     if (act === 'cancel') b.sessions = b.sessions.filter(s => s !== currentSession(b));
@@ -825,7 +854,7 @@ function close(el) {
    doit pouvoir être repris ici — sinon la seule issue serait de supprimer
    le livre et de tout ressaisir. */
 
-function openEditor(id) {
+function openEditor(id, toNote) {
   const b = byId(id);
   if (!b) return;
 
@@ -867,6 +896,9 @@ function openEditor(id) {
       <div id="e-sessions">${sess.map(sessRow).join('')}</div>
       <button class="link" id="e-add">Ajouter une lecture passée</button>
 
+      <h2 class="section">Notes</h2>
+      <textarea class="field field-note" id="e-note" placeholder="Ce que vous en avez pensé…">${esc(b.note || '')}</textarea>
+
       <div class="actions"><button class="btn btn-primary press" id="e-save">Enregistrer</button></div>
     </div>`;
 
@@ -879,6 +911,10 @@ function openEditor(id) {
   const author = body.querySelector('#e-author');
   const box = body.querySelector('#e-covers');
   const list = body.querySelector('#e-sessions');
+  const note = body.querySelector('#e-note');
+
+  // Venu du bloc « Notes » de la fiche : on ouvre directement dessus.
+  if (toNote) requestAnimationFrame(() => { note.scrollIntoView({ block: 'center' }); note.focus(); });
 
   const drawCovers = busy => {
     const all = [cover, ...cands.filter(c => c !== cover)].filter(Boolean);
@@ -939,6 +975,8 @@ function openEditor(id) {
       b.genre = g;
       b.cover = cover;
       b.sessions = sortSessions(sess);
+      const n = note.value.trim();
+      if (n) b.note = n; else delete b.note;
       // Titre corrigé : une couverture restée introuvable mérite un second essai.
       if (renamed && !cover) delete b.noCover;
       close(sheet);

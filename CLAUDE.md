@@ -28,7 +28,7 @@ Les sections de `app.js`, dans l'ordre : constantes et `SEED` → état et `load
 ### Le modèle de données
 
 ```js
-{ id, title, author, cover, genre, favorite, shortlist,
+{ id, title, author, cover, genre, favorite, shortlist, note,
   sessions: [{ id, startedAt, finishedAt }] }
 ```
 
@@ -48,6 +48,7 @@ Les sections de `app.js`, dans l'ordre : constantes et `SEED` → état et `load
 - Le rendu se fait par `innerHTML` : **toute donnée utilisateur passe par `esc()`**.
 - **La pile de l'écran Lecture n'est pas un scroller** (`initDeck`). Les couvertures sont empilées en absolu ; `--p` porte la profondeur de chacune, `--fan` recentre l'éventail. Le geste retenu est celui qui ne servait à rien — vers la droite, Lecture étant le premier onglet ; vers la gauche appartient au pager et mène à la Bibliothèque, ne le lui prends pas. Les écouteurs sont passifs exprès : le pager continue de voir le geste.
 - **`coverHTML()` pose toujours le dégradé titré au fond**, l'image par-dessus. Une couverture qui tarde ou revient en 404 laisse donc voir le titre. Ne remets pas l'image seule.
+- **La note appartient au livre, pas à la lecture.** C'était un choix : on relit rarement en pensant assez différemment pour vouloir deux textes. Deux appareils qui écrivent chacun la leur passent par `mergeNotes()`, qui réunit plutôt que de trancher — `mergeLibraries()` ne doit jamais perdre de texte écrit à la main.
 - **L'ordre de `sessions` porte le statut** : une lecture en cours doit rester la dernière. Toute écriture qui réordonne passe par `sortSessions()`.
 
 ### L'interface est en français

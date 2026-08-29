@@ -56,6 +56,8 @@ L'app est du HTML et du JavaScript sans étape de build : GitHub Pages ou Netlif
 
 **Ajouter un livre.** Tu cherches par titre, ou tu photographies la couverture. L'app lit le code-barres s'il y en a un, sinon elle déchiffre la couverture (voir plus bas). Les couvertures arrivent toutes seules, depuis Open Library et Google Books.
 
+**Une note par livre.** Sous les dates de sa fiche, un bloc à remplir : ce que tu en as pensé, à qui tu l'as prêté, la page à relire. Rien d'autre — pas de note sur 5, pas de champs à remplir.
+
 **Tout se corrige.** Le crayon sur la fiche d'un livre ouvre son édition : titre, auteur, genre, couverture (l'app te propose celles des catalogues), dates de lecture. Tu peux aussi retirer une lecture, ou en ajouter une que tu avais oubliée.
 
 **Les relectures comptent.** Un livre lu trois fois apparaît trois fois dans l'historique, aux trois bonnes dates. C'était le point de départ du projet.
