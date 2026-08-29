@@ -122,7 +122,7 @@ input  { font: inherit; color: inherit; background: none; border: 0; outline: 0;
   font-size: 12px; font-weight: 600; letter-spacing: 1.1px; text-transform: uppercase;
   color: var(--ink-3); margin: 22px 0 12px;
 }
-.grow { flex: 1; min-height: 0; }
+.grow { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .empty { color: var(--ink-2); font-size: 15px; line-height: 1.55; letter-spacing: -.2px; padding: 4px 0; }
 
 /* ── Couvertures ───────────────────────────────────────────── */
@@ -134,7 +134,8 @@ input  { font: inherit; color: inherit; background: none; border: 0; outline: 0;
   container-type: inline-size;
   box-shadow: 0 1px 2px rgba(20,16,40,.16), 0 10px 26px rgba(20,16,40,.16);
 }
-.cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Positionnée pour passer devant le dégradé de repli, qui vit dessous. */
+.cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
 .cover::after {
   content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
   box-shadow: inset 0 0 0 .5px rgba(255,255,255,.3);
@@ -149,35 +150,59 @@ input  { font: inherit; color: inherit; background: none; border: 0; outline: 0;
 }
 .cover .fallback small { font-weight: 400; opacity: .78; font-size: .7em; margin-top: .5em; }
 
-/* ── Lecture en cours : les couvertures seules, légèrement posées
-   l'une sur l'autre — les détails vivent dans la fiche du livre ── */
+/* ── Lecture en cours : une pile qui tourne ────────────────────
+   Les couvertures sont posées en éventail plutôt que bord à bord : on voit
+   d'un coup combien de livres sont ouverts. `--p` est la profondeur dans la
+   pile (0 = devant), écrite par initDeck ; toute la mise en place tient dans
+   la transform, donc le tour de pile est une simple transition.
 
-.rail-hero {
-  flex: 1; min-height: 0;
-  display: flex; align-items: center;
-  overflow-x: auto; overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  /* marge basse généreuse : l'ombre des couvertures n'est jamais rognée */
-  margin: 0 calc(-1 * var(--pad)); padding: 14px 32px 40px; scrollbar-width: none;
+   Le titre du livre de devant est écrit sous la pile : sans couverture, il
+   ne se lirait nulle part ailleurs. */
+
+.deck-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+.deck {
+  position: relative; flex: 1; min-height: 0;
+  margin: 0 calc(-1 * var(--pad));
 }
-.rail-hero::-webkit-scrollbar { display: none; }
 
 .hero {
-  flex: 0 0 auto; height: 90%; max-height: 470px; min-height: 150px;
-  scroll-snap-align: center;
-  transform: rotate(var(--r, 0deg));
+  position: absolute; left: 50%; top: 50%;
+  height: 100%; max-height: 430px; aspect-ratio: 2 / 3;
+  transform-origin: 50% 62%;
+  /* L'éventail part vers la droite ; `--fan` (le nombre de livres visibles
+     derrière le premier, écrit par initDeck) le recentre d'autant. Les deux
+     décalages sont exprimés en largeur de couverture : la pile reste
+     centrée quelle que soit la place disponible. */
+  transform:
+    translate(-50%, -50%)
+    translateX(calc(var(--p, 0) * 34% - var(--fan, 0) * 17%))
+    rotate(calc(-1.6deg + var(--p, 0) * 3.4deg))
+    scale(calc(1 - var(--p, 0) * .075));
+  transition: transform .55s var(--spring), opacity .3s var(--ease);
 }
-.hero + .hero { margin-left: -26px; }
-.hero:first-child { margin-left: auto; }
-.hero:last-child { margin-right: auto; }
-.hero:nth-child(2n)   { --r: 2.2deg; }
-.hero:nth-child(2n+1) { --r: -1.8deg; }
-.hero:only-child { --r: 0deg; }
+/* Au-delà du quatrième, un livre ne se distingue plus de son voisin. */
+.hero.deep { opacity: 0; pointer-events: none; }
 
 .hero .cover {
-  height: 100%; width: auto; aspect-ratio: 2 / 3; border-radius: 12px;
+  height: 100%; width: 100%; border-radius: 12px;
   box-shadow: 0 3px 8px rgba(20,16,40,.16), 0 16px 34px rgba(20,16,40,.2);
+  transition: transform .2s var(--ease);
 }
+.hero:active .cover { transform: scale(.972); }
+
+.deck-cap { flex: 0 0 auto; text-align: center; padding: 10px 0 0; }
+.deck-cap p {
+  font-size: 14px; letter-spacing: -.3px; color: var(--ink-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.deck-cap b { font-weight: 600; color: var(--ink); }
+.deck-cap .dots { display: flex; justify-content: center; gap: 6px; margin-top: 10px; }
+.deck-cap .dots i {
+  width: 5px; height: 5px; border-radius: 99px; background: rgba(60, 60, 67, .2);
+  transition: width .4s var(--spring), background .3s var(--ease);
+}
+.deck-cap .dots i.on { width: 17px; background: var(--ink); }
 
 /* ── Rails & grilles ───────────────────────────────────────── */
 
@@ -421,6 +446,18 @@ input  { font: inherit; color: inherit; background: none; border: 0; outline: 0;
 }
 .ov-del svg { width: 21px; height: 21px; stroke-width: 1.8; }
 
+.ov-edit {
+  position: absolute; z-index: 3;
+  top: calc(var(--safe-t) + 14px); left: 68px;
+  width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; color: var(--ink);
+  background: var(--glass-tint);
+  box-shadow: var(--glass-edge-soft), 0 6px 16px rgba(20,16,40,.1);
+  backdrop-filter: blur(16px) saturate(170%);
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
+}
+.ov-edit svg { width: 20px; height: 20px; stroke-width: 1.9; }
+
 .ov-body {
   flex: 0 1 auto; min-height: 0; overflow-y: auto;
   width: 100%; max-width: 640px; margin: 0 auto;
@@ -525,6 +562,40 @@ input  { font: inherit; color: inherit; background: none; border: 0; outline: 0;
 .spinner { width: 22px; height: 22px; margin: 24px auto; border: 2px solid rgba(60,60,67,.14); border-top-color: var(--ink); border-radius: 50%; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .status { text-align: center; font-size: 14px; color: var(--ink-2); letter-spacing: -.2px; }
+
+/* ── Modifier un livre ─────────────────────────────────────── */
+
+/* Les couvertures candidates : un rail, la retenue cerclée de noir. */
+.cover-pick { display: flex; gap: 12px; overflow-x: auto; margin: 0 -20px; padding: 4px 20px 12px; scrollbar-width: none; }
+.cover-pick::-webkit-scrollbar { display: none; }
+.cover-pick button { flex: 0 0 auto; width: 66px; border-radius: 7px; }
+.cover-pick button img {
+  display: block; width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: inherit;
+  background: #eceaf0;
+  box-shadow: 0 1px 2px rgba(20,16,40,.16), 0 6px 16px rgba(20,16,40,.14);
+}
+.cover-pick button[aria-selected="true"] img { box-shadow: 0 0 0 2.5px var(--ink), 0 6px 16px rgba(20,16,40,.14); }
+.cover-pick .spinner { margin: 40px 12px; }
+.cover-pick .hint { padding: 8px 0; text-align: left; }
+
+/* Les liens d'action de l'éditeur respirent : ils séparent deux sections. */
+.ov-body > .link { display: inline-block; padding: 4px 0 16px; }
+
+.sess { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: .5px solid var(--hair); }
+.sess:last-child { border-bottom: 0; }
+.sess .meta { flex: 1; min-width: 0; }
+.sess .meta h4 { font-size: 13px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; color: var(--ink-3); }
+.sess .dates { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.sess .dates input {
+  flex: 1; min-width: 0; padding: 9px 12px; border-radius: 12px; font-size: 14px;
+  background: rgba(120,120,128,.09); box-shadow: inset 0 0 0 .5px rgba(0,0,0,.05);
+}
+.sess-del {
+  flex: 0 0 auto; width: 38px; height: 38px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(255,59,48,.9); background: rgba(255,59,48,.08);
+}
+.sess-del svg { width: 18px; height: 18px; stroke-width: 1.8; }
 
 /* ── Écran de verrouillage ─────────────────────────────────── */
 

@@ -49,12 +49,14 @@ L'app est du HTML et du JavaScript sans étape de build : GitHub Pages ou Netlif
 
 **Quatre écrans**, qui glissent horizontalement.
 
-- **Lecture** — ce que tu lis en ce moment, et la pile de ce qui t'attend.
+- **Lecture** — ce que tu lis en ce moment, et la pile de ce qui t'attend. Plusieurs livres en cours&nbsp;? Ils sont posés en éventail : glisse vers la droite pour faire tourner la pile, ou touche un livre de derrière pour le ramener devant.
 - **Bibliothèque** — tes livres rangés par genre, un chapitre par genre.
 - **Favoris** — ceux qui comptent.
 - **Historique** — une page par année. C'est là que l'app devient intéressante avec le temps.
 
 **Ajouter un livre.** Tu cherches par titre, ou tu photographies la couverture. L'app lit le code-barres s'il y en a un, sinon elle déchiffre la couverture (voir plus bas). Les couvertures arrivent toutes seules, depuis Open Library et Google Books.
+
+**Tout se corrige.** Le crayon sur la fiche d'un livre ouvre son édition : titre, auteur, genre, couverture (l'app te propose celles des catalogues), dates de lecture. Tu peux aussi retirer une lecture, ou en ajouter une que tu avais oubliée.
 
 **Les relectures comptent.** Un livre lu trois fois apparaît trois fois dans l'historique, aux trois bonnes dates. C'était le point de départ du projet.
 

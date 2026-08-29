@@ -228,6 +228,12 @@ function statusOf(b) {
 }
 const currentSession = b => { const l = b.sessions[b.sessions.length - 1]; return l && !l.finishedAt ? l : null; };
 
+/* L'ordre des sessions porte le statut : une lecture en cours doit rester
+   la dernière, sinon `statusOf` déclarerait le livre terminé. */
+const sortSessions = list => [...list].sort((x, y) =>
+  (!x.finishedAt) - (!y.finishedAt)
+  || (x.startedAt || x.finishedAt || '').localeCompare(y.startedAt || y.finishedAt || ''));
+
 /* Chaque lecture terminée est une entrée d'historique : une relecture réapparaît. */
 function historyEntries() {
   const out = [];
@@ -292,15 +298,18 @@ function coverURL(src, size) {
   return src;
 }
 
+/* Le dégradé titré est toujours posé au fond, l'image par-dessus : une
+   couverture qui tarde, disparaît du catalogue ou revient en 404 laisse
+   voir le titre au lieu d'une carte blanche. */
 function coverHTML(book, size = 'M') {
-  if (book.cover) {
-    // En grand : la version M (souvent déjà en cache) sert de fond
-    // pendant que la L arrive — pas de carte blanche au chargement.
-    const low = size === 'L' ? ` style="background-image:url('${esc(coverURL(book.cover, 'M'))}');background-size:cover;background-position:center"` : '';
-    return `<img src="${esc(coverURL(book.cover, size))}"${low} alt="" loading="lazy" decoding="async">`;
-  }
   const [a, b] = PALETTES[hash(book.title) % PALETTES.length];
-  return `<div class="fallback" style="background:linear-gradient(150deg,${a},${b})">${esc(book.title)}<small>${esc(book.author)}</small></div>`;
+  const fallback = `<div class="fallback" style="background:linear-gradient(150deg,${a},${b})">${esc(book.title)}<small>${esc(book.author)}</small></div>`;
+  if (!book.cover) return fallback;
+
+  // En grand : la version M (souvent déjà en cache) sert de fond
+  // pendant que la L arrive.
+  const low = size === 'L' ? ` style="background-image:url('${esc(coverURL(book.cover, 'M'))}');background-size:cover;background-position:center"` : '';
+  return fallback + `<img src="${esc(coverURL(book.cover, size))}"${low} alt="" loading="lazy" decoding="async">`;
 }
 
 /* Remplace en place les couvertures d'un livre, sans re-rendre la vue :
@@ -428,6 +437,7 @@ function render() {
     <section class="page" data-page="historique">${viewHistorique()}</section>`;
 
   initPager();
+  initDeck();
   initChapters();
   initYears();
 
@@ -464,13 +474,26 @@ function viewLecture() {
     <h2 class="section">En lecture</h2>
 
     ${reading.length ? `
-      <div class="rail-hero">
-        ${reading.map((b, k) => `
-          <button class="hero press" data-open="${b.id}" style="--k:${k}" aria-label="${esc(b.title)}">
-            <span class="cover">${coverHTML(b, 'L')}</span>
-          </button>`).join('')}
+      <div class="deck-wrap">
+        <div class="deck" id="deck">
+          ${reading.map((b, k) => `
+            <button class="hero" data-open="${b.id}" style="--p:${k}" aria-label="${esc(b.title)}">
+              <span class="cover">${coverHTML(b, 'L')}</span>
+            </button>`).join('')}
+        </div>
+        <div class="deck-cap" id="deck-cap">
+          <p><b>${esc(reading[0].title)}</b> · ${esc(reading[0].author)}</p>
+          ${reading.length > 1
+            ? `<div class="dots">${reading.map((b, k) => `<i class="${k ? '' : 'on'}"></i>`).join('')}</div>`
+            : ''}
+        </div>
       </div>` : `
-      <div class="grow"><p class="empty">Rien en cours.<br>Choisissez un livre dans votre liste.</p></div>`}
+      <div class="grow">
+        <button class="ch-empty press" data-add>
+          <i>${icon.plus}</i>
+          <em>Commencer un livre</em>
+        </button>
+      </div>`}
 
     <h2 class="section">À lire</h2>
     ${want.length ? `
@@ -483,6 +506,63 @@ function viewLecture() {
           </button>`).join('')}
       </div>` : `<p class="empty">Marquez un livre « À lire » depuis sa fiche :<br>vos prochaines lectures s'afficheront ici.</p>`}
   `;
+}
+
+/* La pile des livres en cours tourne sur elle-même. Le geste retenu est
+   celui qui ne menait nulle part : Lecture étant le premier onglet, tirer
+   vers la droite ne faisait rien. Tirer vers la gauche continue d'ouvrir la
+   Bibliothèque. Toucher un livre de derrière le ramène devant : le tour de
+   pile reste accessible sans geste, souris comprise. */
+function initDeck() {
+  const deck = document.getElementById('deck');
+  if (!deck) return;
+  const cards = [...deck.children];
+  if (cards.length < 2) return;
+
+  const cap = document.getElementById('deck-cap');
+  const dots = [...cap.querySelectorAll('.dots i')];
+  // Au-delà du quatrième, un livre ne se distingue plus de son voisin.
+  deck.style.setProperty('--fan', Math.min(cards.length, 4) - 1);
+  let front = 0;
+
+  const place = () => {
+    cards.forEach((c, i) => {
+      const p = (i - front + cards.length) % cards.length;
+      c.style.setProperty('--p', Math.min(p, 3));
+      c.style.zIndex = cards.length - p;
+      c.classList.toggle('deep', p > 3);
+      c.classList.toggle('front', p === 0);
+    });
+    const b = byId(cards[front].dataset.open);
+    if (b) cap.querySelector('p').innerHTML = `<b>${esc(b.title)}</b> · ${esc(b.author)}`;
+    dots.forEach((d, i) => d.classList.toggle('on', i === front));
+  };
+  place();
+
+  let x0 = null, y0 = 0, turned = false;
+
+  deck.addEventListener('touchstart', e => {
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; turned = false;
+  }, { passive: true });
+
+  deck.addEventListener('touchmove', e => {
+    if (x0 == null || turned) return;
+    const dx = e.touches[0].clientX - x0, dy = e.touches[0].clientY - y0;
+    if (Math.abs(dy) > Math.abs(dx)) { x0 = null; return; } // geste vertical : pas pour nous
+    if (dx > 44) { turned = true; front = (front + 1) % cards.length; place(); }
+  }, { passive: true });
+
+  deck.addEventListener('touchend', () => { x0 = null; }, { passive: true });
+
+  deck.addEventListener('click', e => {
+    // Le clic qui suit un tour de pile n'ouvre pas la fiche du livre.
+    if (turned) { turned = false; e.stopPropagation(); e.preventDefault(); return; }
+    const card = e.target.closest('.hero');
+    if (!card || card.classList.contains('front')) return;
+    e.stopPropagation(); e.preventDefault();
+    front = cards.indexOf(card);
+    place();
+  }, true);
 }
 
 /* Bibliothèque ----------------------------------------------- */
@@ -653,12 +733,18 @@ function openDetail(id, silent) {
       <span>${label}</span>
     </div>`;
 
+  /* Le cœur suit le livre partout : on tombe amoureux d'un roman en le
+     lisant, pas seulement une fois refermé. */
+  const fav = act('fav', 'Favori', icon.heart, 'glass', `aria-pressed="${!!b.favorite}"`);
+
   const actions = {
     want: act('start', 'Commencer', icon.play, 'primary')
-        + act('shortlist', 'À lire', icon.bookmark, 'glass', `aria-pressed="${!!b.shortlist}"`),
+        + act('shortlist', 'À lire', icon.bookmark, 'glass', `aria-pressed="${!!b.shortlist}"`)
+        + fav,
     reading: act('finish', 'Terminé', icon.check, 'primary')
+           + fav
            + act('cancel', 'Abandonner', icon.stop),
-    read: act('fav', 'Favori', icon.heart, 'glass', `aria-pressed="${!!b.favorite}"`)
+    read: fav
         + act('reread', 'Relire', icon.replay),
   }[st];
 
@@ -669,8 +755,8 @@ function openDetail(id, silent) {
     last && last.startedAt && ['Durée', plural(days(last.startedAt, last.finishedAt), 'jour')],
   ].filter(Boolean);
 
-  const history = done.length > 1 ? `
-    <h2 class="section">Toutes vos lectures</h2>
+  const history = done.length ? `
+    <h2 class="section">${done.length > 1 ? 'Toutes vos lectures' : 'Votre lecture'}</h2>
     <div class="rows">
       ${done.map((s, i) => `
         <div class="row">
@@ -686,6 +772,7 @@ function openDetail(id, silent) {
   detail.innerHTML = `
     <button class="ov-close press" data-close>${icon.close}</button>
     <button class="ov-del press" data-act="delete" aria-label="Retirer de la bibliothèque">${icon.trash}</button>
+    <button class="ov-edit press" data-act="edit" aria-label="Modifier ce livre">${icon.pencil}</button>
     <div class="art">
       <span class="cover">${coverHTML(b, 'L')}</span>
     </div>
@@ -709,6 +796,7 @@ function openDetail(id, silent) {
 
     const act = e.target.closest('[data-act]')?.dataset.act;
     if (!act) return;
+    if (act === 'edit') return openEditor(b.id);
     if (act === 'start' || act === 'reread') b.sessions.push({ id: uid(), startedAt: today(), finishedAt: null });
     if (act === 'finish') { const s = currentSession(b); if (s) s.finishedAt = today(); }
     if (act === 'cancel') b.sessions = b.sessions.filter(s => s !== currentSession(b));
@@ -730,11 +818,159 @@ function close(el) {
   if (el === detail) openBook = null;
 }
 
+/* ── Modifier un livre ─────────────────────────────────────────
+   Le scan se trompe parfois de titre, devine mal un genre, ramène la
+   couverture d'une autre édition ; et une date de lecture est toujours
+   celle du jour où on l'a saisie. Tout ce que l'app a écrit à notre place
+   doit pouvoir être repris ici — sinon la seule issue serait de supprimer
+   le livre et de tout ressaisir. */
+
+function openEditor(id) {
+  const b = byId(id);
+  if (!b) return;
+
+  let g = b.genre;
+  let cover = b.cover || null;
+  let cands = [];
+  let sess = b.sessions.map(s => ({ ...s }));
+
+  const sessRow = (s, i) => `
+    <div class="sess" data-sess="${s.id}">
+      <span class="meta">
+        <h4>${s.finishedAt ? `${ordinal(i + 1)} lecture` : 'Lecture en cours'}</h4>
+        <span class="dates">
+          <input type="date" data-k="startedAt" value="${s.startedAt || ''}" aria-label="Début">
+          <input type="date" data-k="finishedAt" value="${s.finishedAt || ''}" aria-label="Fin">
+        </span>
+      </span>
+      <button class="sess-del press" data-drop="${s.id}" aria-label="Retirer cette lecture">${icon.trash}</button>
+    </div>`;
+
+  dropGlass(sheet);
+  sheet.innerHTML = `
+    <button class="ov-close press" data-close>${icon.close}</button>
+    <div class="ov-body">
+      <h1 class="sheet-title">Modifier</h1>
+      <input class="field" id="e-title" placeholder="Titre" autocomplete="off" value="${esc(b.title)}">
+      <input class="field" id="e-author" placeholder="Auteur" autocomplete="off" value="${esc(b.author)}">
+
+      <h2 class="section">Genre</h2>
+      <div class="picks">
+        ${GENRES.map(x => `<button class="pick press" data-g="${x.id}" aria-selected="${x.id === g}" style="background:${x.color}">${esc(x.name)}</button>`).join('')}
+      </div>
+
+      <h2 class="section">Couverture</h2>
+      <div class="cover-pick" id="e-covers"></div>
+      <button class="link" id="e-more">Chercher des couvertures</button>
+
+      <h2 class="section">Lectures</h2>
+      <div id="e-sessions">${sess.map(sessRow).join('')}</div>
+      <button class="link" id="e-add">Ajouter une lecture passée</button>
+
+      <div class="actions"><button class="btn btn-primary press" id="e-save">Enregistrer</button></div>
+    </div>`;
+
+  sheet.hidden = false;
+  sheet.classList.remove('enter'); void sheet.offsetWidth; sheet.classList.add('enter');
+  requestAnimationFrame(() => applyGlass(sheet));
+
+  const body = sheet.querySelector('.ov-body');
+  const title = body.querySelector('#e-title');
+  const author = body.querySelector('#e-author');
+  const box = body.querySelector('#e-covers');
+  const list = body.querySelector('#e-sessions');
+
+  const drawCovers = busy => {
+    const all = [cover, ...cands.filter(c => c !== cover)].filter(Boolean);
+    box.innerHTML = all.map(c => `
+        <button class="press" data-cover="${esc(c)}" aria-selected="${c === cover}">
+          <img src="${esc(coverURL(c, 'M'))}" alt="" loading="lazy" decoding="async">
+        </button>`).join('')
+      + (busy ? '<div class="spinner"></div>' : '')
+      + (all.length || busy ? '' : '<p class="hint">Pas encore de couverture.</p>');
+  };
+  drawCovers(false);
+
+  /* Les dates saisies ne vivent que dans le DOM : on les relit avant
+     toute opération qui redessine la liste. */
+  const readDates = () => list.querySelectorAll('.sess').forEach(row => {
+    const s = sess.find(x => x.id === row.dataset.sess);
+    if (!s) return;
+    s.startedAt = row.querySelector('[data-k="startedAt"]').value || null;
+    s.finishedAt = row.querySelector('[data-k="finishedAt"]').value || null;
+  });
+  const drawSessions = () => { list.innerHTML = sess.map(sessRow).join(''); };
+
+  sheet.onclick = async e => {
+    if (e.target.closest('[data-close]')) return close(sheet);
+
+    const pick = e.target.closest('[data-g]');
+    if (pick) {
+      g = pick.dataset.g;
+      body.querySelectorAll('[data-g]').forEach(el => el.setAttribute('aria-selected', el.dataset.g === g));
+      return;
+    }
+
+    const c = e.target.closest('[data-cover]');
+    if (c) { cover = c.dataset.cover; return drawCovers(false); }
+
+    if (e.target.closest('#e-more')) {
+      drawCovers(true);
+      cands = await coverCandidates(title.value.trim() || b.title, author.value.trim() || b.author);
+      return drawCovers(false);
+    }
+
+    const drop = e.target.closest('[data-drop]');
+    if (drop) { readDates(); sess = sess.filter(s => s.id !== drop.dataset.drop); return drawSessions(); }
+
+    if (e.target.closest('#e-add')) {
+      readDates();
+      sess.push({ id: uid(), startedAt: today(), finishedAt: today() });
+      return drawSessions();
+    }
+
+    if (e.target.closest('#e-save')) {
+      const t = title.value.trim();
+      if (!t) return title.focus();
+      readDates();
+      const renamed = normTitle(t) !== normTitle(b.title);
+      b.title = t;
+      b.author = author.value.trim() || 'Auteur inconnu';
+      b.genre = g;
+      b.cover = cover;
+      b.sessions = sortSessions(sess);
+      // Titre corrigé : une couverture restée introuvable mérite un second essai.
+      if (renamed && !cover) delete b.noCover;
+      close(sheet);
+      commit();
+      resolveCovers();
+    }
+  };
+}
+
+/* Toutes les couvertures connues pour un titre, les deux catalogues
+   confondus : la première trouvée n'est pas toujours la bonne édition. */
+async function coverCandidates(title, author) {
+  const q = `${title} ${author || ''}`.trim();
+
+  const fromOL = fetch('https://openlibrary.org/search.json?limit=12&fields=cover_i&q=' + encodeURIComponent(q))
+    .then(r => r.json())
+    .then(j => (j.docs || []).filter(d => d.cover_i).map(d => `https://covers.openlibrary.org/b/id/${d.cover_i}-L.jpg`))
+    .catch(() => []);
+
+  const [gb, ol] = await Promise.all([googleBooks(q, 12), fromOL]);
+  const seen = new Set();
+  return [...(gb || []).map(x => x.cover), ...ol]
+    .filter(c => c && !seen.has(c) && seen.add(c))
+    .slice(0, 14);
+}
+
 /* ── Ajout : scan photo, recherche, saisie ─────────────────── */
 
 let searchSeq = 0;
+let lastTerm = ''; // la dernière recherche, pour pouvoir y revenir
 
-function openSheet() {
+function openSheet(prefill) {
   dropGlass(sheet);
   sheet.innerHTML = `
     <button class="ov-close press" data-close>${icon.close}</button>
@@ -764,6 +1000,13 @@ function openSheet() {
   const shot = sheet.querySelector('#shot');
   results.innerHTML = `<p class="hint">Ou <button class="link" id="manual">saisissez-le à la main</button>.</p>`;
 
+  // Retour depuis l'étape suivante : la recherche reprend là où on l'avait laissée.
+  if (prefill) {
+    q.value = prefill;
+    results.innerHTML = '<div class="spinner"></div>';
+    searchBooks(prefill, results);
+  }
+
   sheet.querySelector('#scan').onclick = () => shot.click();
   shot.onchange = () => { if (shot.files?.[0]) scanCover(shot.files[0]); };
 
@@ -771,6 +1014,7 @@ function openSheet() {
   q.oninput = () => {
     clearTimeout(timer);
     const term = q.value.trim();
+    lastTerm = term;
     if (term.length < 3) { results.innerHTML = ''; return; }
     results.innerHTML = '<div class="spinner"></div>';
     timer = setTimeout(() => searchBooks(term, results), 320);
@@ -1065,6 +1309,7 @@ function stepGenre(item, suggested) {
   const years = Array.from({ length: 12 }, (_, i) => nowYear - i);
   let genreSel = suggested || null;
   let readYear = null; // null = à lire, sinon année de lecture
+  const twin = books.find(x => normTitle(x.title) === normTitle(item.title));
 
   body.innerHTML = `
     <h1 class="sheet-title">Dans quel genre&nbsp;?</h1>
@@ -1072,6 +1317,8 @@ function stepGenre(item, suggested) {
       <span class="cover">${coverHTML(item)}</span>
       <span><h4>${esc(item.title)}</h4><p>${esc(item.author)}</p></span>
     </div>
+    ${twin ? `<p class="status">Ce titre est déjà dans votre bibliothèque.</p>` : ''}
+    <p class="hint" style="padding:12px 0 0"><button class="link" id="other">Ce n'est pas le bon livre</button></p>
     <div class="picks">
       ${GENRES.map(g => `<button class="pick press" data-g="${g.id}" aria-selected="false" style="background:${g.color}">${esc(g.name)}</button>`).join('')}
     </div>
@@ -1096,6 +1343,7 @@ function stepGenre(item, suggested) {
   sync();
 
   body.onclick = e => {
+    if (e.target.closest('#other')) return openSheet(lastTerm);
     const g = e.target.closest('[data-g]');
     if (g) { genreSel = g.dataset.g; return sync(); }
     const st = e.target.closest('[data-st]');
@@ -1121,7 +1369,7 @@ function stepGenre(item, suggested) {
 
 /* ── Événements globaux ────────────────────────────────────── */
 
-tabbar.querySelector('#add').onclick = openSheet;
+tabbar.querySelector('#add').onclick = () => openSheet();
 
 function closeMenu() { document.querySelectorAll('.menu-pop, .menu-scrim').forEach(el => el.remove()); }
 

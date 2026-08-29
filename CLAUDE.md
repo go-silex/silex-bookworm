@@ -16,14 +16,14 @@ Pour lancer : `npx serve` puis ouvrir `localhost:3000`. **Jamais en `file://`** 
 
 | Fichier | |
 |---|---|
-| `app.js` | toute l'application, ~1180 lignes, un seul scope global |
+| `app.js` | toute l'application, ~1500 lignes, un seul scope global |
 | `style.css` | tout le style |
 | `glass.js` | `liquidGlass(el, opts)` — filtre SVG de réfraction. Chromium seulement, dégrade en flou simple ailleurs |
 | `api/library.js` | la sync, la seule partie serveur avec la suivante |
 | `api/vision.js` | la reconnaissance de couverture — la clé Gemini vit ici, jamais dans le navigateur |
 | `sw.js` | ne met en cache que les images de couverture, rien d'autre |
 
-Les sections de `app.js`, dans l'ordre : constantes et `SEED` → état et `load()` → sync serveur → état dérivé → utilitaires → couvertures → verre liquide → cœur du rendu → les 4 vues → détail d'un livre → ajout → reconnaissance de couverture → étapes du flux d'ajout → événements globaux → séquence de démarrage.
+Les sections de `app.js`, dans l'ordre : constantes et `SEED` → état et `load()` → sync serveur → état dérivé → utilitaires → couvertures → verre liquide → cœur du rendu → les 4 vues → détail d'un livre → modifier un livre → ajout → reconnaissance de couverture → étapes du flux d'ajout → événements globaux → séquence de démarrage.
 
 ### Le modèle de données
 
@@ -46,6 +46,9 @@ Les sections de `app.js`, dans l'ordre : constantes et `SEED` → état et `load
 - **La clé du serveur ne doit jamais revenir côté navigateur.** `api/vision.js` la masque jusque dans les messages d'erreur remontés par Google.
 - **Le scan a deux chemins**, `readCover()` : le serveur d'abord, puis une clé propre à l'appareil (`KEY_API`) en rattrapage. Le serveur prime toujours quand il répond. Ne supprime pas le rattrapage — c'est ce qui évite le cul-de-sac à qui a sauté l'étape d'installation.
 - Le rendu se fait par `innerHTML` : **toute donnée utilisateur passe par `esc()`**.
+- **La pile de l'écran Lecture n'est pas un scroller** (`initDeck`). Les couvertures sont empilées en absolu ; `--p` porte la profondeur de chacune, `--fan` recentre l'éventail. Le geste retenu est celui qui ne servait à rien — vers la droite, Lecture étant le premier onglet ; vers la gauche appartient au pager et mène à la Bibliothèque, ne le lui prends pas. Les écouteurs sont passifs exprès : le pager continue de voir le geste.
+- **`coverHTML()` pose toujours le dégradé titré au fond**, l'image par-dessus. Une couverture qui tarde ou revient en 404 laisse donc voir le titre. Ne remets pas l'image seule.
+- **L'ordre de `sessions` porte le statut** : une lecture en cours doit rester la dernière. Toute écriture qui réordonne passe par `sortSessions()`.
 
 ### L'interface est en français
 
