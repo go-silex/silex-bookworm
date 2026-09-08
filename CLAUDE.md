@@ -49,7 +49,9 @@ Les sections de `app.js`, dans l'ordre : constantes et `SEED` → état et `load
 - **La pile de l'écran Lecture n'est pas un scroller** (`initDeck`). Les couvertures sont empilées en absolu ; `--p` porte la profondeur de chacune, `--fan` recentre l'éventail. Le geste retenu est celui qui ne servait à rien — vers la droite, Lecture étant le premier onglet ; vers la gauche appartient au pager et mène à la Bibliothèque, ne le lui prends pas. Les écouteurs sont passifs exprès : le pager continue de voir le geste.
 - **`coverHTML()` pose toujours le dégradé titré au fond**, l'image par-dessus. Une couverture qui tarde ou revient en 404 laisse donc voir le titre. Ne remets pas l'image seule.
 - **La note appartient au livre, pas à la lecture.** C'était un choix : on relit rarement en pensant assez différemment pour vouloir deux textes. Deux appareils qui écrivent chacun la leur passent par `mergeNotes()`, qui réunit plutôt que de trancher — `mergeLibraries()` ne doit jamais perdre de texte écrit à la main.
-- **L'ordre de `sessions` porte le statut** : une lecture en cours doit rester la dernière. Toute écriture qui réordonne passe par `sortSessions()`.
+- **L'ordre de `sessions` porte le statut** : une lecture en cours doit rester la dernière. Toute écriture qui réordonne passe par `sortSessions()` — `mergeLibraries()` comprise, qui triait autrefois sur la seule date de début.
+- **Une lecture en cours peut être la même, terminée ailleurs.** `mergeLibraries()` la reconnaît à son identifiant ou à sa date de début, sinon l'appareil resté en arrière rajoute sa copie inachevée à côté de la version terminée et le livre repart « en cours », serveur compris.
+- **« Masquer les livres lus » n'agit que sur la Bibliothèque**, seul écran où un livre lu se mêle aux autres. Le menu ne l'offre donc que là (`openMenu`) : ailleurs, cocher l'option ne faisait rien.
 
 ### L'interface est en français
 

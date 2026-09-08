@@ -160,12 +160,18 @@ function mergeLibraries(base, extra) {
     const note = mergeNotes(b.note, x.note);
     if (note) b.note = note;
     for (const s of x.sessions) {
+      /* Une lecture encore en cours ici est peut-être la même, terminée
+         ailleurs : on la reconnaît à son identifiant ou à sa date de
+         début. Sans ça, l'appareil resté en arrière rajoutait sa copie
+         inachevée à côté de la version terminée, et le livre repartait
+         « en cours » — jusque sur le serveur, donc pour toujours. */
       const dup = s.finishedAt
         ? b.sessions.some(t => t.finishedAt === s.finishedAt)
-        : b.sessions.some(t => !t.finishedAt);
+        : b.sessions.some(t => !t.finishedAt || t.id === s.id
+            || (s.startedAt && t.startedAt === s.startedAt));
       if (!dup) b.sessions.push({ ...s });
     }
-    b.sessions.sort((a, c) => (a.startedAt || '').localeCompare(c.startedAt || ''));
+    b.sessions = sortSessions(b.sessions);
   }
   out.forEach(b => delete b.noCover); // d'anciennes données serveur peuvent le porter
   return out;
@@ -1411,6 +1417,11 @@ tabbar.querySelector('#add').onclick = () => openSheet();
 
 function closeMenu() { document.querySelectorAll('.menu-pop, .menu-scrim').forEach(el => el.remove()); }
 
+/* Masquer les livres lus ne veut rien dire ailleurs que dans la
+   Bibliothèque : l'Historique n'est fait que de lectures terminées, les
+   Favoris s'y marquent une fois le livre refermé, et Lecture n'affiche
+   que ce qui est en cours ou à venir. Proposé sur ces trois écrans, le
+   bouton se cochait sans que rien ne bouge — il n'y est plus. */
 function openMenu() {
   closeMenu();
   const scrim = document.createElement('div');
@@ -1420,9 +1431,10 @@ function openMenu() {
   const pop = document.createElement('div');
   pop.className = 'menu-pop';
   pop.innerHTML = `
-    <button id="toggle-read">${hideRead ? 'Afficher les livres lus' : 'Masquer les livres lus'}</button>
+    ${tab === 'bibli' ? `<button id="toggle-read">${hideRead ? 'Afficher les livres lus' : 'Masquer les livres lus'}</button>` : ''}
     <button class="danger" id="wipe">Vider la bibliothèque</button>`;
-  pop.querySelector('#toggle-read').onclick = () => {
+  const toggle = pop.querySelector('#toggle-read');
+  if (toggle) toggle.onclick = () => {
     closeMenu();
     hideRead = !hideRead;
     localStorage.setItem('bibliotheque.hideRead', hideRead ? '1' : '0');
