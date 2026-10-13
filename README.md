@@ -2,7 +2,7 @@
 
 Une app pour suivre ce qu'on lit. Sur papier.
 
-Pas de note sur 5, pas de fil d'actualité, pas de compte à créer. Tu photographies la couverture, le livre entre dans ta bibliothèque, et tu retrouves des années plus tard la trace de ce que tu lisais cet été-là.
+Pas de fil d'actualité, pas de compte à créer. Tu photographies la couverture, le livre entre dans ta bibliothèque, et tu retrouves des années plus tard la trace de ce que tu lisais cet été-là.
 
 **Ta bibliothèque t'appartient.** Tu l'installes chez toi, sur ton hébergement, avec ton mot de passe. Personne d'autre n'y accède — pas même nous.
 
@@ -56,7 +56,9 @@ L'app est du HTML et du JavaScript sans étape de build : GitHub Pages ou Netlif
 
 **Ajouter un livre.** Tu cherches par titre, ou tu photographies la couverture. L'app lit le code-barres s'il y en a un, sinon elle déchiffre la couverture (voir plus bas). Les couvertures arrivent toutes seules, depuis Open Library et Google Books.
 
-**Une note par livre.** Sous les dates de sa fiche, un bloc à remplir : ce que tu en as pensé, à qui tu l'as prêté, la page à relire. Rien d'autre — pas de note sur 5, pas de champs à remplir.
+**Cinq étoiles, une fois le livre refermé.** Quand tu touches **Terminé**, la fiche te demande ton avis : une à cinq étoiles, d'un geste. Elles n'apparaissent ni sur un livre à lire ni pendant une lecture — on ne juge pas un livre avant de l'avoir fini. Retouche l'étoile choisie pour effacer l'avis ; l'Historique l'affiche en petit à côté de chaque lecture.
+
+**Une note par livre.** Sous les dates de sa fiche, un bloc à remplir : ce que tu en as pensé, à qui tu l'as prêté, la page à relire. Rien d'autre — pas de champs à remplir.
 
 **Tout se corrige.** Le crayon sur la fiche d'un livre ouvre son édition : titre, auteur, genre, couverture (l'app te propose celles des catalogues), dates de lecture. Tu peux aussi retirer une lecture, ou en ajouter une que tu avais oubliée.
 
@@ -122,7 +124,7 @@ Trois fichiers, aucun framework, aucune étape de build.
 | `glass.js` | l'effet de verre liquide (Chromium uniquement, dégradé ailleurs) |
 | `api/library.js` | la synchronisation — la seule partie serveur, 55 lignes |
 
-**Le modèle de données.** Un livre a un titre, un auteur, un genre, et une liste de *sessions* de lecture (`startedAt` / `finishedAt`). Tout le reste en découle : le statut se déduit de la dernière session, l'historique est la liste de toutes les sessions terminées.
+**Le modèle de données.** Un livre a un titre, un auteur, un genre, un avis sur 5 facultatif, et une liste de *sessions* de lecture (`startedAt` / `finishedAt`). Tout le reste en découle : le statut se déduit de la dernière session, l'historique est la liste de toutes les sessions terminées.
 
 **La synchronisation.** Le navigateur garde tout en `localStorage` et pousse vers `/api/library`, protégé par un mot de passe unique. Sans serveur configuré, l'API répond `501` et l'app continue en local sans rien dire. Les bibliothèques de deux appareils fusionnent au lieu de s'écraser : les livres se réunissent par titre, les sessions par date de fin. Rien n'est perdu, rien n'est doublé.
 
@@ -130,7 +132,7 @@ Trois fichiers, aucun framework, aucune étape de build.
 
 ## English
 
-A reading tracker for paper books. No ratings, no feed, no account — you deploy your own copy and it's yours.
+A reading tracker for paper books. No feed, no account — you deploy your own copy and it's yours.
 
 **Install:** click the Vercel button above (two free accounts, ~10 min, no credit card), or hand the repo to your AI assistant with *"install this for me, follow INSTALL.md"*. Step-by-step instructions live in **[INSTALL.md](INSTALL.md)**.
 
@@ -138,7 +140,7 @@ Vercel is the only supported target, on purpose. The app is plain static files a
 
 **Note:** the interface is in French. The code is plain vanilla JS with no build step, so translating it means editing string literals in `app.js` — contributions welcome.
 
-**How it works:** four swipeable views (reading, library by genre, favourites, history by year). Books are added by title search or by photographing the cover — barcode first, then a Gemini vision fallback if you supply a free API key. Covers are fetched from Open Library and Google Books. Re-reads are first-class: each reading session is stored separately, so a book read three times shows up three times in your history.
+**How it works:** four swipeable views (reading, library by genre, favourites, history by year). Books are added by title search or by photographing the cover — barcode first, then a Gemini vision fallback if you supply a free API key. Covers are fetched from Open Library and Google Books. Finished books can be rated out of five stars — never before you've finished them. Re-reads are first-class: each reading session is stored separately, so a book read three times shows up three times in your history.
 
 **Data:** stored in `localStorage` and synced to your own Vercel Blob store behind a single password you choose. Nobody else can read it — the code is public, your library is not.
 

@@ -28,7 +28,7 @@ Les sections de `app.js`, dans l'ordre : constantes et `SEED` → état et `load
 ### Le modèle de données
 
 ```js
-{ id, title, author, cover, genre, favorite, shortlist, note,
+{ id, title, author, cover, genre, favorite, shortlist, note, rating,
   sessions: [{ id, startedAt, finishedAt }] }
 ```
 
@@ -51,6 +51,7 @@ Les sections de `app.js`, dans l'ordre : constantes et `SEED` → état et `load
 - **La note appartient au livre, pas à la lecture.** C'était un choix : on relit rarement en pensant assez différemment pour vouloir deux textes. Deux appareils qui écrivent chacun la leur passent par `mergeNotes()`, qui réunit plutôt que de trancher — `mergeLibraries()` ne doit jamais perdre de texte écrit à la main.
 - **L'ordre de `sessions` porte le statut** : une lecture en cours doit rester la dernière. Toute écriture qui réordonne passe par `sortSessions()` — `mergeLibraries()` comprise, qui triait autrefois sur la seule date de début.
 - **Une lecture en cours peut être la même, terminée ailleurs.** `mergeLibraries()` la reconnaît à son identifiant ou à sa date de début, sinon l'appareil resté en arrière rajoute sa copie inachevée à côté de la version terminée et le livre repart « en cours », serveur compris.
+- **L'avis (`rating`, entier de 1 à 5) appartient au livre, comme la note**, et ne s'affiche qu'une fois le livre lu — ni sur un livre à lire, ni pendant une lecture, relecture comprise. Absent = pas d'avis : ne stocke jamais `0`, et lis-le toujours par `ratingOf()`, qui écarte les valeurs aberrantes. Deux avis n'ont pas d'horodatage pour se départager : dans `mergeLibraries()`, celui de la base prime, l'autre ne comble qu'une absence.
 - **« Masquer les livres lus » n'agit que sur la Bibliothèque**, seul écran où un livre lu se mêle aux autres. Le menu ne l'offre donc que là (`openMenu`) : ailleurs, cocher l'option ne faisait rien.
 
 ### L'interface est en français

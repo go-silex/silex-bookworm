@@ -159,6 +159,11 @@ function mergeLibraries(base, extra) {
     b.cover = b.cover || x.cover;
     const note = mergeNotes(b.note, x.note);
     if (note) b.note = note;
+    // Deux avis n'ont pas d'horodatage pour se départager : celui de la
+    // base prime, l'autre ne fait que combler une absence. Un appareil
+    // resté en arrière, qui pousse ses livres sans l'avis, ne l'efface donc
+    // que jusqu'au prochain démarrage de celui qui l'avait donné.
+    if (!ratingOf(b) && ratingOf(x)) b.rating = ratingOf(x);
     for (const s of x.sessions) {
       /* Une lecture encore en cours ici est peut-être la même, terminée
          ailleurs : on la reconnaît à son identifiant ou à sa date de
@@ -253,6 +258,12 @@ function statusOf(b) {
 }
 const currentSession = b => { const l = b.sessions[b.sessions.length - 1]; return l && !l.finishedAt ? l : null; };
 
+/* L'avis sur 5 : un entier de 1 à 5, absent tant qu'on n'a rien dit — on
+   ne stocke jamais 0. Relu avec méfiance : une valeur venue d'ailleurs
+   (autre appareil, retouche du JSON) ne doit ni casser le rendu ni s'y
+   glisser telle quelle. */
+const ratingOf = b => { const r = Math.round(+b.rating); return r >= 1 && r <= 5 ? r : 0; };
+
 /* L'ordre des sessions porte le statut : une lecture en cours doit rester
    la dernière, sinon `statusOf` déclarerait le livre terminé. */
 const sortSessions = list => [...list].sort((x, y) =>
@@ -299,6 +310,13 @@ const icon = {
   plus:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
   bookmark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4.5h10a.8.8 0 0 1 .8.8v14.2l-5.8-3.9-5.8 3.9V5.3a.8.8 0 0 1 .8-.8z"/></svg>',
   more:     '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
+  star:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linejoin="round"><path d="M12 3.6l2.49 5.58 6.07.64-4.54 4.09 1.27 5.97L12 16.83l-5.29 3.05 1.27-5.97-4.54-4.09 6.07-.64z"/></svg>',
+};
+
+/* L'avis en petit, pour les listes : rien tant qu'il n'y en a pas. */
+const miniStars = b => {
+  const r = ratingOf(b);
+  return r ? `<span class="rate" aria-label="${r} sur 5"><b>${'★'.repeat(r)}</b>${'★'.repeat(5 - r)}</span>` : '';
 };
 
 const headHTML = title => `
@@ -712,7 +730,7 @@ function viewHistorique() {
                     <h4>${esc(e.book.title)}${e.total > 1 ? `<span class="tag">${ordinal(e.nth)} lecture</span>` : ''}</h4>
                     <p>${esc(e.book.author)}</p>
                   </span>
-                  <span class="aside">${fmtMonth(e.session.finishedAt)}</span>
+                  <span class="aside">${fmtMonth(e.session.finishedAt)}${miniStars(e.book)}</span>
                 </button>`).join('')}
             </div></div>
           </section>`;
@@ -742,6 +760,7 @@ function initYears() {
 /* ── Fiche livre ───────────────────────────────────────────── */
 
 let openBook = null;
+let rateAsk = null; // le livre qu'on vient de terminer : ses étoiles s'annoncent
 
 function openDetail(id, silent) {
   const b = byId(id);
@@ -780,6 +799,21 @@ function openDetail(id, silent) {
     last && last.startedAt && ['Durée', plural(days(last.startedAt, last.finishedAt), 'jour')],
   ].filter(Boolean);
 
+  /* L'avis se donne une fois le livre refermé : sur un livre à lire ou en
+     cours de lecture, il n'aurait rien à dire. Il appartient au livre,
+     comme la note — une relecture le retrouve et peut le reprendre, elle
+     n'en ajoute pas un second. Juste après « Terminé », les étoiles
+     arrivent une à une : c'est le moment où l'on a un avis. */
+  const r = ratingOf(b);
+  const fresh = rateAsk === id;
+  rateAsk = null;
+  const stars = st === 'read' ? `
+    <div class="stars${fresh ? ' fresh' : ''}" role="group" aria-label="Votre avis">
+      ${[1, 2, 3, 4, 5].map(n => `<button class="press${n <= r ? ' on' : ''}" data-rate="${n}"
+        aria-pressed="${n === r}" aria-label="${plural(n, 'étoile')}">${icon.star}</button>`).join('')}
+    </div>
+    ${r ? '' : '<p class="stars-ask">Votre avis&nbsp;?</p>'}` : '';
+
   /* La note du livre, et non celle d'une lecture : on relit rarement en
      pensant autre chose au point de vouloir deux textes. */
   const note = `
@@ -811,6 +845,7 @@ function openDetail(id, silent) {
     </div>
     <div class="ov-body">
       <div class="actions icons">${actions}</div>
+      ${stars}
       <div class="facts">${facts.map(([k, v]) => `<div class="fact"><span>${k}</span><strong>${esc(v)}</strong></div>`).join('')}</div>
       ${note}
       ${history}
@@ -828,12 +863,19 @@ function openDetail(id, silent) {
       return commit();
     }
 
+    // Retoucher l'étoile déjà choisie retire l'avis : on peut se raviser.
+    const rate = +e.target.closest('[data-rate]')?.dataset.rate;
+    if (rate) {
+      if (ratingOf(b) === rate) delete b.rating; else b.rating = rate;
+      return commit();
+    }
+
     const act = e.target.closest('[data-act]')?.dataset.act;
     if (!act) return;
     if (act === 'edit') return openEditor(b.id);
     if (act === 'note') return openEditor(b.id, true);
     if (act === 'start' || act === 'reread') b.sessions.push({ id: uid(), startedAt: today(), finishedAt: null });
-    if (act === 'finish') { const s = currentSession(b); if (s) s.finishedAt = today(); }
+    if (act === 'finish') { const s = currentSession(b); if (s) { s.finishedAt = today(); rateAsk = b.id; } }
     if (act === 'cancel') b.sessions = b.sessions.filter(s => s !== currentSession(b));
     if (act === 'fav') b.favorite = !b.favorite;
     if (act === 'shortlist') b.shortlist = !b.shortlist;
