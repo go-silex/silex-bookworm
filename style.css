@@ -7,6 +7,7 @@
   --ink-3:    rgba(60, 60, 67, .36);
   --hair:     rgba(0, 0, 0, .07);
   --accent:   #5b4bff;
+  --star:     #ff9f0a;
   --ease:     cubic-bezier(.32, .72, 0, 1);
   --safe-b:   env(safe-area-inset-bottom, 0px);
   --safe-t:   env(safe-area-inset-top, 0px);
@@ -346,6 +347,9 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
 .row .meta h4 { font-size: 16px; font-weight: 500; letter-spacing: -.35px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row .meta p { font-size: 13px; color: var(--ink-3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row .aside { flex: 0 0 auto; font-size: 13px; color: var(--ink-3); text-align: right; }
+/* L'avis sous le mois, dans l'Historique : discret, il se lit en passant. */
+.row .aside .rate { display: block; margin-top: 4px; font-size: 10px; letter-spacing: 1px; color: rgba(60, 60, 67, .16); }
+.row .aside .rate b { font-weight: inherit; color: var(--star); }
 
 .tag { display: inline-block; margin-left: 8px; padding: 2px 7px; border-radius: 6px; font-size: 10.5px; font-weight: 600; letter-spacing: .3px; text-transform: uppercase; color: var(--ink-2); background: rgba(60,60,67,.09); }
 
@@ -511,6 +515,25 @@ input, textarea { font: inherit; color: inherit; background: none; border: 0; ou
 .btn[data-act="fav"][aria-pressed="true"] svg { fill: currentColor; }
 .btn[data-act="shortlist"][aria-pressed="true"] { color: #007aff; }
 .btn[data-act="shortlist"][aria-pressed="true"] svg { fill: currentColor; }
+
+/* L'avis : cinq étoiles sous les actions, à portée de pouce au moment où
+   l'on referme le livre. Chaque étoile garde une cible de 44 px. */
+.stars { display: flex; justify-content: center; gap: 2px; margin-top: 16px; }
+.stars button {
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(60, 60, 67, .22);
+}
+.stars svg { width: 30px; height: 30px; stroke-width: 1.5; }
+.stars .on { color: var(--star); }
+.stars .on svg { fill: currentColor; }
+.stars.fresh button { animation: star-in .5s var(--spring) backwards; }
+.stars.fresh button:nth-child(2) { animation-delay: .06s; }
+.stars.fresh button:nth-child(3) { animation-delay: .12s; }
+.stars.fresh button:nth-child(4) { animation-delay: .18s; }
+.stars.fresh button:nth-child(5) { animation-delay: .24s; }
+@keyframes star-in { from { transform: scale(.3); opacity: 0; } }
+.stars-ask { text-align: center; font-size: 13px; letter-spacing: -.1px; color: var(--ink-3); margin-top: 2px; }
 
 .facts { margin-top: 18px; }
 .fact { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 12px 0; border-bottom: .5px solid var(--hair); font-size: 15px; letter-spacing: -.2px; }
